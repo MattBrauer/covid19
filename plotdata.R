@@ -6,9 +6,10 @@ library(ggthemes)
 library(gganimate)
 library(gifski)
 
-
 library(usmap)
 states_map <- map_data("state")
+
+data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 
 state_abbreviations <- c("AL", "AK", "AZ", "KS", "UT", "CO", "CT", 
                          "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "AR", 
@@ -31,7 +32,7 @@ state_names <- c("Alabama", "Alaska", "Arizona", "Kansas",
 names(state_names) <- state_abbreviations
 names(state_abbreviations) <- state_names
 
-confirmed <- read_csv("data/time_series_19-covid-Confirmed.csv") %>%
+confirmed <- read_csv(paste0(data_dir, "/time_series_19-covid-Confirmed.csv")) %>%
   pivot_longer(cols=c(-`Province/State`, -`Country/Region`, -Lat, -Long),
                names_to="date",
                values_to="cases") %>%
@@ -40,7 +41,7 @@ confirmed <- read_csv("data/time_series_19-covid-Confirmed.csv") %>%
   rename("confirmed" = cases)
 
 
-deaths <- read_csv("data/time_series_19-covid-Deaths.csv") %>%
+deaths <- read_csv(paste0(data_dir, "/time_series_19-covid-Deaths.csv")) %>%
   pivot_longer(cols=c(-`Province/State`, -`Country/Region`, -Lat, -Long),
                names_to="date",
                values_to="cases") %>%
@@ -49,7 +50,7 @@ deaths <- read_csv("data/time_series_19-covid-Deaths.csv") %>%
   rename("deaths" = cases)
 
 
-recovered <- read_csv("data/time_series_19-covid-Recovered.csv") %>%
+recovered <- read_csv(paste0(data_dir, "/time_series_19-covid-Recovered.csv")) %>%
   pivot_longer(cols=c(-`Province/State`, -`Country/Region`, -Lat, -Long),
                names_to="date",
                values_to="cases") %>%
@@ -69,7 +70,7 @@ by_region <- complete %>%
   group_by(state, date) %>%
   summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths))
 
-by_region_cumulative <- by_state %>%
+by_region_cumulative <- by_region %>%
   group_by(state) %>%
   summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths))
 
@@ -99,10 +100,6 @@ states_map %>%
   scale_fill_viridis_c(option = "C") +
   coord_fixed(1.3) +
   ggtitle(cutoff_date)
-
-us_states %>%
-  group_by(state) %>%
-  summarize(last_date=max(date)) 
 
 by_country <- complete %>%
   group_by(country, date) %>%
