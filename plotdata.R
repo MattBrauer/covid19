@@ -90,7 +90,7 @@ states_map %>%
     filter(date <= cutoff_date) %>%
     arrange(state, date) %>%  
     slice(n()) %>%
-    mutate(fips=state_abbreviations[state],
+    mutate(fips = state_abbreviations[state],
           region = tolower(state)) %>%
     filter(!is.na(region)) %>%
     select(region, cases)
@@ -113,6 +113,26 @@ by_country %>%
   ggplot(aes(x=lag_days, y=confirmed, group=country)) +
   geom_point(aes(color=country)) +
   xlab("Day of pandemic") +
-  ylab("Confirmed cases")
+  ylab("Confirmed cases") +
+  xlim(20, NA) +
+  ggtitle(cutoff_date)
+
+lag_countries <- c("China","Italy","Spain","US")
+lag_days <- c(0, 33, 44, 44)
+names(lag_days) <- lag_countries
+
+by_country %>%
+  filter(country=="Italy" | country=="US" | country=="China" | country=="Spain") %>%
+  mutate("day" = date - min(date),
+         "lag_date" = date - lag_days[country],
+ #        "lag_date" = if_else(country=="Italy", date - days(33), if_else(country=="US", date - days(44), date)),
+         "lag_days" = lag_date - min(date)) %>%
+  ggplot(aes(x=lag_days, y=confirmed, group=country)) +
+  geom_point(aes(color=country)) +
+  xlab("Day of pandemic") +
+  ylab("Confirmed cases") +
+  xlim(0, NA) +
+#  ylim(0, 50000) +
+  ggtitle(cutoff_date)
 
 
