@@ -32,6 +32,11 @@ state_names <- c("Alabama", "Alaska", "Arizona", "Kansas",
 names(state_names) <- state_abbreviations
 names(state_abbreviations) <- state_names
 
+lag_countries <- c("China","Italy","Spain","US")
+lag_days <- c(0, 33, 44, 44)
+names(lag_days) <- lag_countries
+
+
 # load and tidy the data
 confirmed <- read_csv(paste0(data_dir, "/time_series_19-covid-Confirmed.csv")) %>%
   pivot_longer(cols=c(-`Province/State`, -`Country/Region`, -Lat, -Long),
@@ -119,12 +124,8 @@ by_country %>%
   xlim(20, NA) +
   ggtitle(cutoff_date)
 
-lag_countries <- c("China","Italy","Spain","US")
-lag_days <- c(0, 33, 44, 44)
-names(lag_days) <- lag_countries
-
 by_country %>%
-  filter(country=="Italy" | country=="US" | country=="China" | country=="Spain") %>%
+  filter(country %in% lag_countries) %>%
   mutate("day" = date - min(date),
          "lag_date" = date - lag_days[country],
          "lag_days" = lag_date - min(date)) %>%
