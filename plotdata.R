@@ -127,14 +127,13 @@ by_country %>%
   filter(country=="Italy" | country=="US" | country=="China" | country=="Spain") %>%
   mutate("day" = date - min(date),
          "lag_date" = date - lag_days[country],
- #        "lag_date" = if_else(country=="Italy", date - days(33), if_else(country=="US", date - days(44), date)),
          "lag_days" = lag_date - min(date)) %>%
   ggplot(aes(x=lag_days, y=confirmed, group=country)) +
   geom_point(aes(color=country)) +
   xlab("Day of pandemic") +
   ylab("Confirmed cases") +
   xlim(0, NA) +
-#  ylim(0, 50000) +
+  ylim(0, 30000) +
   ggtitle(cutoff_date)
 
 
