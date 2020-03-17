@@ -32,6 +32,7 @@ state_names <- c("Alabama", "Alaska", "Arizona", "Kansas",
 names(state_names) <- state_abbreviations
 names(state_abbreviations) <- state_names
 
+# load and tidy the data
 confirmed <- read_csv(paste0(data_dir, "/time_series_19-covid-Confirmed.csv")) %>%
   pivot_longer(cols=c(-`Province/State`, -`Country/Region`, -Lat, -Long),
                names_to="date",
@@ -58,6 +59,7 @@ recovered <- read_csv(paste0(data_dir, "/time_series_19-covid-Recovered.csv")) %
   mutate(date = as.Date(date, "%m/%d/%y")) %>%
   rename("recovered" = cases)
 
+# join the variables
 complete <- confirmed %>%
   left_join(recovered) %>%
   left_join(deaths)
