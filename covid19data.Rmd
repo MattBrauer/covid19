@@ -191,3 +191,25 @@ by_country %>%
 
 ```
 
+```{r all-countries, echo=FALSE, warning=FALSE, message=FALSE}
+
+by_country %>%
+  filter(confirmed >= 100) %>%
+  group_by(country) %>%
+  mutate(day = date - min(date), maxday = max(day)) %>%
+  {
+    ggplot(., aes(x=day, y=confirmed, group=country)) +
+    geom_line(aes(color=country)) +
+    geom_text(data = subset(., day == maxday & maxday > 10), aes(label = country,
+                                                     colour = country,
+                                                     x = day,
+                                                     y = confirmed), hjust = -.1) +
+    xlab("Day of pandemic") +
+    ylab("Confirmed cases") +
+    scale_y_log10() +
+    theme(legend.position = "none") +
+    ggtitle(latest_date)
+  }
+
+
+```
