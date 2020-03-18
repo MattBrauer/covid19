@@ -103,6 +103,13 @@ us_states <- by_region %>%
   mutate(st=state_names[str_trim(st)], region=str_trim(region)) %>%
   mutate(state=if_else(is.na(st), state, st)) %>%
   select(-st)
+
+us_states_current <- us_states %>%
+    group_by(state, date) %>%
+    summarize(cases=sum(confirmed)) %>%
+    filter(date <= cutoff_date) %>%
+    arrange(state, date) %>%  
+    slice(n())
 ```
 
 
@@ -110,12 +117,7 @@ us_states <- by_region %>%
 cutoff_date <- today()
 states_map %>%
   left_join(
-    us_states %>%
-    group_by(state, date) %>%
-    summarize(cases=sum(confirmed)) %>%
-    filter(date <= cutoff_date) %>%
-    arrange(state, date) %>%  
-    slice(n()) %>%
+    us_states_current %>%
     mutate(fips = state_abbreviations[state],
           region = tolower(state)) %>%
     filter(!is.na(region)) %>%
@@ -128,6 +130,10 @@ states_map %>%
   ggtitle(cutoff_date)
 ```
 
+```{r states-plot, echo=FALSE}
+
+
+```
 
 ```{r us-italy-plot, echo=FALSE, warning=FALSE, message=FALSE}
 by_country %>%

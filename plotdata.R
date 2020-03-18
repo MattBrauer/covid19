@@ -77,9 +77,9 @@ by_region <- complete %>%
   group_by(state, date) %>%
   summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths))
 
-by_region_cumulative <- by_region %>%
+by_region_current <- by_region %>%
   group_by(state) %>%
-  summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths))
+  summarize(confirmed=max(confirmed), recovered=max(recovered), deaths=max(deaths))
 
 us_states <- by_region %>%
   ungroup() %>%
@@ -88,15 +88,17 @@ us_states <- by_region %>%
   mutate(state=if_else(is.na(st), state, st)) %>%
   select(-st)
 
+us_states_current <- us_states %>%
+  group_by(state, date) %>%
+  summarize(cases=sum(confirmed)) %>%
+  filter(date <= cutoff_date) %>%
+  arrange(state, date) %>%  
+  slice(n())
+
 cutoff_date <- today()
 states_map %>%
   left_join(
-    us_states %>%
-    group_by(state, date) %>%
-    summarize(cases=sum(confirmed)) %>%
-    filter(date <= cutoff_date) %>%
-    arrange(state, date) %>%  
-    slice(n()) %>%
+    us_states_current %>%
     mutate(fips = state_abbreviations[state],
           region = tolower(state)) %>%
     filter(!is.na(region)) %>%
@@ -137,4 +139,20 @@ by_country %>%
   ylim(0, 30000) +
   ggtitle(cutoff_date)
 
+# focal state
+focal_states <- c("New York", "California", "Washington")
+us_states %>%
+  group_by(state, date) %>%
+  summarize(cases=sum(confirmed)) %>%
+  filter(date <= cutoff_date, state %in% focal_states) %>%
+  arrange(state, date) %>%
+  ggplot(aes(x=date, y=cases, group=state)) +
+  geom_point(aes(color=state)) +
+  geom_line(aes(color=state)) +
+  xlab("Day of pandemic") +
+  ylab("Confirmed cases") +
+#  xlim(0, NA) +
+#  ylim(0, 30000) +
+  ggtitle(cutoff_date)
 
+bay_area_counties <- c("San Francisco County", "Santa Clara County", "San Mateo", "Marin", "Contra Costa County", "Sonoma County", "Alameda County")
