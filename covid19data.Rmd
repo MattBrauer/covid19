@@ -4,23 +4,23 @@ author: "Matt Brauer"
 date: "3/16/2020"
 output: html_document
 ---
+
 ```{bash git-pull, echo=FALSE, warning=FALSE, message=FALSE}
-
+# refresh data
 git pull --recurse-submodules
-
 ```
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
-library(lubridate)
+require(tidyverse)
+require(lubridate)
 require(maps)
 require(viridis)
 library(ggthemes)
 library(gganimate)
 library(gifski)
 
-library(usmap)
+require(usmap)
 states_map <- map_data("state")
 
 data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_time_series"
