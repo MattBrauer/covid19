@@ -110,6 +110,16 @@ us_states_current <- us_states %>%
     filter(date <= cutoff_date) %>%
     arrange(state, date) %>%  
     slice(n())
+
+latest_date <- complete %>%
+  filter(confirmed > 0 | recovered == 0 | deaths == 0) %>%
+  select(date) %>%
+  top_n(1, date) %>%
+  distinct() %>%
+  pull(date)
+
+latest_date <- as.Date(latest_date)
+
 ```
 
 
