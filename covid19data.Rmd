@@ -4,6 +4,11 @@ author: "Matt Brauer"
 date: "3/16/2020"
 output: html_document
 ---
+```{bash git-pull, echo=FALSE, warning=FALSE, message=FALSE}
+
+git pull --recurse-submodules
+
+```
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
