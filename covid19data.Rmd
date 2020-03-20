@@ -113,7 +113,7 @@ us_states <- by_region %>%
 
 us_states_current <- us_states %>%
     group_by(state, date) %>%
-    summarize(cases=sum(confirmed)) %>%
+    summarize_if(is.numeric, sum) %>%
     arrange(state, date) %>%
     slice(n())
 
@@ -136,21 +136,21 @@ states_map %>%
     mutate(fips = state_abbreviations[state],
           region = tolower(state)) %>%
     filter(!is.na(region)) %>%
-    select(region, cases)
+    select(region, confirmed)
   ) %>%
   ggplot(aes(long, lat, group = group)) +
-  geom_polygon(aes(fill = cases), color = "white") +
+  geom_polygon(aes(fill = confirmed), color = "white") +
   scale_fill_viridis_c(option = "C") +
   coord_fixed(1.3) +
   ggtitle(latest_date)
 ```
 
-```{r states-plot, echo=FALSE, warning=FALSE, message=FALSE}
+```{r states-plot-confirmed, echo=FALSE, warning=FALSE, message=FALSE}
 us_states_current %>%
-  arrange(desc(cases)) %>%
+  arrange(desc(confirmed)) %>%
   ungroup() %>%
-  top_n(10, cases) %>%
-  ggplot(aes(x=reorder(state, cases), y=cases)) +
+  top_n(10, confirmed) %>%
+  ggplot(aes(x=reorder(state, confirmed), y=confirmed)) +
   geom_bar(stat="identity", fill="steelblue") +
   theme_minimal() +
   coord_flip() +
@@ -159,6 +159,22 @@ us_states_current %>%
   ggtitle(latest_date)
 
 ```
+
+```{r states-plot-deaths, echo=FALSE, warning=FALSE, message=FALSE}
+us_states_current %>%
+  arrange(desc(deaths)) %>%
+  ungroup() %>%
+  top_n(10, deaths) %>%
+  ggplot(aes(x=reorder(state, deaths), y=deaths)) +
+  geom_bar(stat="identity", fill="steelblue") +
+  theme_minimal() +
+  coord_flip() +
+  xlab("state") +
+  ylab("deaths") +
+  ggtitle(latest_date)
+
+```
+
 
 ```{r us-italy-plot, echo=FALSE, warning=FALSE, message=FALSE}
 by_country %>%
@@ -176,7 +192,6 @@ by_country %>%
 ```
 
 ```{r us-italy-china-spain-plot, echo=FALSE, warning=FALSE, message=FALSE}
-
 by_country %>%
   filter(country %in% lag_countries) %>%
   mutate("day" = date - min(date),
@@ -189,7 +204,6 @@ by_country %>%
   xlim(0, 25) +
   ylim(0, 30000) +
   ggtitle(latest_date)
-
 ```
 
 ```{r all-countries, echo=FALSE, warning=FALSE, message=FALSE}
