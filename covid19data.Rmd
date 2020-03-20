@@ -7,7 +7,8 @@ output: html_document
 
 ```{bash git-pull, echo=FALSE, warning=FALSE, message=FALSE}
 # refresh data
-git pull --recurse-submodules
+#git pull --recurse-submodules
+git submodule update --remote --recursive
 ```
 
 ```{r setup, include=FALSE}
@@ -50,6 +51,7 @@ lag_countries <- c("China","Italy","Spain","US")
 lag_days <- c(0, 33, 44, 44)
 names(lag_days) <- lag_countries
 
+cutoff_date <- today()
 ```
 
 
@@ -128,7 +130,6 @@ latest_date <- as.Date(latest_date)
 
 
 ```{r map-plot, echo=FALSE, warning=FALSE, message=FALSE}
-cutoff_date <- today()
 states_map %>%
   left_join(
     us_states_current %>%
