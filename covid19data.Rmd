@@ -100,6 +100,20 @@ by_country <- complete %>%
   group_by(country, date) %>%
   summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths))
 
+by_country_state <- complete %>%
+  ungroup() %>%
+  mutate(state = recode(state,
+         "Washington, D.C."="District of Columbia",
+         "Virgin Islands, U.S."="US Virgin Islands")) %>%
+  separate(state, into=c("region", "st"), sep=",", fill="left", remove=FALSE) %>%
+  mutate(st=state_names[str_trim(st)],
+         region=str_trim(region),
+         state=if_else(is.na(st), state, st)) %>%
+  select(-st) %>%
+  mutate(country = if_else(country=="US", state, country)) %>%
+  group_by(country, date) %>%
+  summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths))
+
 by_region_cumulative <- by_region %>%
   group_by(state) %>%
   summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths))
@@ -142,7 +156,7 @@ states_map %>%
   geom_polygon(aes(fill = confirmed), color = "white") +
   scale_fill_viridis_c(option = "C") +
   coord_fixed(1.3) +
-  ggtitle(latest_date)
+  ggtitle(paste("Confirmed cases as of", latest_date))
 ```
 
 ```{r states-plot-confirmed, echo=FALSE, warning=FALSE, message=FALSE}
@@ -156,7 +170,7 @@ us_states_current %>%
   coord_flip() +
   xlab("state") +
   ylab("cumulative cases") +
-  ggtitle(latest_date)
+  ggtitle(paste("Confirmed cases as of", latest_date))
 
 ```
 
@@ -171,10 +185,9 @@ us_states_current %>%
   coord_flip() +
   xlab("state") +
   ylab("deaths") +
-  ggtitle(latest_date)
+  ggtitle(paste("Deaths as of", latest_date))
 
 ```
-
 
 ```{r us-italy-plot, echo=FALSE, warning=FALSE, message=FALSE}
 by_country %>%
@@ -184,11 +197,28 @@ by_country %>%
          "lag_days" = lag_date - min(date)) %>%
   ggplot(aes(x=lag_days, y=confirmed, group=country)) +
   geom_point(aes(color=country)) +
+  geom_line(aes(color=country)) +
   xlab("Day of pandemic") +
   ylab("Confirmed cases") +
   xlim(20, NA) +
-  ggtitle(latest_date)
+  ggtitle(paste("Confirmed cases as of", latest_date))
 
+```
+
+
+```{r country-state-plot, echo=FALSE, warning=FALSE, message=FALSE}
+by_country_state %>%
+  filter(country=="Italy" | country=="California" | country=="New York") %>%
+  mutate("day" = date - min(date),
+         "lag_date" = if_else(country=="Italy", date, date - days(11)),
+         "lag_days" = lag_date - min(date)) %>%
+  ggplot(aes(x=lag_days, y=confirmed, group=country)) +
+  geom_point(aes(color=country)) +
+  geom_line(aes(color=country)) +
+  xlab("Day of pandemic") +
+  ylab("Confirmed cases") +
+  xlim(20, NA) +
+  ggtitle(paste("Confirmed cases as of", latest_date))
 ```
 
 ```{r us-italy-china-spain-plot, echo=FALSE, warning=FALSE, message=FALSE}
@@ -199,11 +229,12 @@ by_country %>%
          "lag_days" = lag_date - min(date)) %>%
   ggplot(aes(x=lag_days, y=confirmed, group=country)) +
   geom_point(aes(color=country)) +
+  geom_line(aes(color=country)) +
   xlab("Day of pandemic") +
   ylab("Confirmed cases") +
   xlim(0, 25) +
   ylim(0, 30000) +
-  ggtitle(latest_date)
+  ggtitle(paste("Confirmed cases as of", latest_date))
 ```
 
 ```{r all-countries, echo=FALSE, warning=FALSE, message=FALSE}
@@ -223,7 +254,7 @@ by_country %>%
     ylab("Confirmed cases") +
     scale_y_log10() +
     theme(legend.position = "none") +
-    ggtitle(latest_date)
+    ggtitle(paste("Confirmed cases as of", latest_date))
   }
 
 
