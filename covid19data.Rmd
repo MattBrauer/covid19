@@ -249,7 +249,7 @@ us_states_current %>%
 
 ```
 
-## Comparison of US to other selected other countries
+## Comparison of US to selected other countries
 
 Vs. Italy, Spain and China.
 
