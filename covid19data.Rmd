@@ -91,10 +91,13 @@ recovered <- read_csv(paste0(data_dir, "/time_series_19-covid-Recovered.csv")) %
   mutate(date = as.Date(date, "%m/%d/%y")) %>%
   rename("recovered" = cases)
 
-# join the variables
+# join the variables, removing empty rows
 complete <- confirmed %>%
   left_join(recovered) %>%
-  left_join(deaths)
+  left_join(deaths) %>%
+  filter(!is.na(confirmed), !is.na(recovered), !is.na(deaths))
+
+# remove duplicated and empty columns
 
 by_region <- complete %>%
   filter(country=="US") %>%
@@ -266,6 +269,20 @@ by_country %>%
   ylab("Confirmed cases") +
   xlim(0, NA) +
   ggtitle(paste("Confirmed cases as of", latest_date))
+
+by_country %>%
+  filter(country %in% lag_countries) %>%
+  mutate("day" = date - min(date),
+         "lag_date" = date - lag_days[country],
+         "lag_days" = lag_date - min(date)) %>%
+  ggplot(aes(x=lag_days, y=deaths, group=country)) +
+  geom_point(aes(color=country)) +
+  geom_line(aes(color=country)) +
+  xlab("Day of pandemic") +
+  ylab("Deaths") +
+  xlim(0, NA) +
+  ggtitle(paste("Deaths as of", latest_date))
+
 ```
 
 Focus on Italy.
@@ -283,6 +300,19 @@ by_country %>%
   ylab("Confirmed cases") +
   xlim(20, NA) +
   ggtitle(paste("Confirmed cases as of", latest_date))
+
+by_country %>%
+  filter(country=="Italy" | country=="US") %>%
+  mutate("day" = date - min(date),
+         "lag_date" = if_else(country=="Italy", date, date - days(11)),
+         "lag_days" = lag_date - min(date)) %>%
+  ggplot(aes(x=lag_days, y=deaths, group=country)) +
+  geom_point(aes(color=country)) +
+  geom_line(aes(color=country)) +
+  xlab("Day of pandemic") +
+  ylab("Confirmed cases") +
+  xlim(20, NA) +
+  ggtitle(paste("Deaths as of", latest_date))
 
 ```
 
@@ -304,6 +334,20 @@ by_country_state %>%
   ylab("Confirmed cases") +
   xlim(20, NA) +
   ggtitle(paste("Confirmed cases as of", latest_date))
+
+by_country_state %>%
+  filter(country=="Italy" | country=="California" | country=="New York" | country=="Washington") %>%
+  mutate("day" = date - min(date),
+         "lag_date" = if_else(country=="Italy", date, date - days(11)),
+         "lag_days" = lag_date - min(date)) %>%
+  rename("region" = country) %>%
+  ggplot(aes(x=lag_days, y=deaths, group=region)) +
+  geom_point(aes(color=region)) +
+  geom_line(aes(color=region)) +
+  xlab("Day of pandemic") +
+  ylab("Deaths") +
+  xlim(20, NA) +
+  ggtitle(paste("Deaths as of", latest_date))
 ```
 
 ## Estimating maximum rate of exponential growth in number of observed cases
