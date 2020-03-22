@@ -5,13 +5,8 @@ date: "3/16/2020"
 output: html_document
 ---
 
-```{bash git-pull, echo=FALSE, warning=FALSE, message=FALSE}
-# refresh data
-#git pull --recurse-submodules
-git submodule update --remote --recursive
-```
 
-```{r setup, include=FALSE}
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 require(tidyverse)
 require(lubridate)
@@ -22,8 +17,35 @@ require(viridis)
 library(ggthemes)
 library(gganimate)
 library(gifski)
-
 require(usmap)
+require(git2r)
+```
+Latest version: `r commits(repository("."))[[1]]$message`
+
+## Background
+
+This page contains unprocessed plots of data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6).
+
+(Also see relevant Lancet paper here: [An interactive web-based dashboard to track COVID-19 in real time](https://doi.org/10.1016/S1473-3099(20)30120-1).)
+
+Reported numbers of confirmed cases, deaths and recoveries are available in [their github repo](https://github.com/CSSEGISandData/COVID-19), which is the source for these plots.
+
+Some cautions:
+
+* The definition and number of "confirmed cases" is highly dependent on locale, availability and use of testing. It is a crude proxy and lagging indicator of the progress of the pandemic.
+* These numbers are those reported by local authorities, and should be presumed to be inaccurate on that account.
+* Reported numbers are absolute cumulative, not rates. They have not been scaled to population size.
+* Dates are dates reported, not necessarily date of observation.
+
+
+```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+# refresh data
+#git pull --recurse-submodules
+git submodule update --remote --recursive
+```
+
+
+```{r data-setup, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 states_map <- map_data("state")
 
 data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_time_series"
@@ -62,7 +84,6 @@ names(exp_end) <- exp_phase_countries
 cutoff_date <- today()
 ```
 
-
 ```{r data-load, echo=FALSE, warning=FALSE, message=FALSE}
 # load and tidy the data
 confirmed <- read_csv(paste0(data_dir, "/time_series_19-covid-Confirmed.csv")) %>%
@@ -96,8 +117,6 @@ complete <- confirmed %>%
   left_join(recovered) %>%
   left_join(deaths) %>%
   filter(!is.na(confirmed), !is.na(recovered), !is.na(deaths))
-
-# remove duplicated and empty columns
 
 by_region <- complete %>%
   filter(country=="US") %>%
@@ -147,7 +166,7 @@ latest_date <- complete %>%
   select(date) %>%
   top_n(1, date) %>%
   distinct() %>%
-  pull(date)
+  dplyr::pull(date)
 
 latest_date <- as.Date(latest_date)
 
@@ -265,6 +284,7 @@ by_country %>%
   ggplot(aes(x=lag_days, y=confirmed, group=country)) +
   geom_point(aes(color=country)) +
   geom_line(aes(color=country)) +
+  geom_bar(aes(y=deaths, fill=country), stat="identity") +
   xlab("Day of pandemic") +
   ylab("Confirmed cases") +
   xlim(0, NA) +
@@ -321,10 +341,13 @@ by_country %>%
 
 
 ```{r country-state-plot, echo=FALSE, warning=FALSE, message=FALSE}
+lags_behind_italy <- c(0, 19, 11, 19)
+names(lags_behind_italy) <- c("Italy", "California", "New York", "Washington")
+
 by_country_state %>%
-  filter(country=="Italy" | country=="California" | country=="New York" | country=="Washington") %>%
+  filter(country %in% names(lags_behind_italy)) %>%
   mutate("day" = date - min(date),
-         "lag_date" = if_else(country=="Italy", date, date - days(11)),
+         "lag_date" = date - days(lags_behind_italy[country]),
          "lag_days" = lag_date - min(date)) %>%
   rename("region" = country) %>%
   ggplot(aes(x=lag_days, y=confirmed, group=region)) +
@@ -336,9 +359,9 @@ by_country_state %>%
   ggtitle(paste("Confirmed cases as of", latest_date))
 
 by_country_state %>%
-  filter(country=="Italy" | country=="California" | country=="New York" | country=="Washington") %>%
+  filter(country %in% names(lags_behind_italy)) %>%
   mutate("day" = date - min(date),
-         "lag_date" = if_else(country=="Italy", date, date - days(11)),
+         "lag_date" = date - days(lags_behind_italy[country]),
          "lag_days" = lag_date - min(date)) %>%
   rename("region" = country) %>%
   ggplot(aes(x=lag_days, y=deaths, group=region)) +
