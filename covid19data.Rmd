@@ -37,7 +37,12 @@ Some cautions:
 * Reported numbers are absolute cumulative, not rates. They have not been scaled to population size.
 * Dates are dates reported, not necessarily date of observation.
 
+## Other (more sophisticated and useful) tracking resources
 
+* [UW Virology COVID-19 Dashboard](http://depts.washington.edu/labmed/covid19/)
+* [Kinsa US Health Weather Map](https://healthweather.us/): real-time tracking of atypical fever frequencies
+* [Epidemic modeling](http://gabgoh.github.io/COVID/index.html)
+* [NEJM Coronavirus papers](https://www.nejm.org/coronavirus?cid=DM88311&bid=165352681)
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 # refresh data
@@ -383,12 +388,21 @@ The dates bounding the exponential phase of growth were estimated by eye, and th
 
 ```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
+by_country_state %>%
+  filter(country %in% exp_phase_countries) %>%
+  mutate("day" = date - lag_days[country], "log_confirmed" = log10(confirmed + 1)) %>%
+  ggplot(aes(x=date, y=log_confirmed), color=country) +
+  geom_line(aes(color=country)) +
+  xlab("Date") +
+  ylab("Log10(confirmed cases)") +
+  ggtitle(paste("Confirmed cases as of", latest_date))
+
 exp_phase %>%
   ggplot(aes(x=day, y=log_confirmed), color=country) +
   geom_point(aes(color=country)) +
   geom_line(aes(y=.fitted, color=country)) +
   xlab("Day of exponential phase") +
-  ylab("Confirmed cases") +
+  ylab("log10(confirmed cases)") +
   ggtitle(paste("Exponential phase of growth in confirmed cases as of", latest_date))
 ```
 
