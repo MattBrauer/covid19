@@ -1,7 +1,7 @@
 ---
 title: "JHU COVID-19 data"
 author: "Matt Brauer"
-date: "3/16/2020"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: html_document
 ---
 
@@ -24,7 +24,7 @@ Latest version: `r commits(repository("."))[[1]]$message`
 
 ## Background
 
-This page contains unprocessed plots of data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6).
+This page contains plots of unprocessed data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6).
 
 (Also see relevant Lancet paper here: [An interactive web-based dashboard to track COVID-19 in real time](https://doi.org/10.1016/S1473-3099(20)30120-1).)
 
@@ -36,6 +36,7 @@ Some cautions:
 * These numbers are those reported by local authorities, and should be presumed to be inaccurate on that account.
 * Reported numbers are absolute cumulative, not rates. They have not been scaled to population size.
 * Dates are dates reported, not necessarily date of observation.
+
 
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
@@ -71,9 +72,8 @@ state_names <- c("Alabama", "Alaska", "Arizona", "Kansas",
 names(state_names) <- state_abbreviations
 names(state_abbreviations) <- state_names
 
-lag_countries <- c("China","Italy","Spain","US")
-lag_days <- c(0, 33, 44, 44)
-names(lag_days) <- lag_countries
+lag_days <- c(0, 33, 44, 44, 53, 44, 53)
+names(lag_days) <- c("China","Italy","Spain","US", "California", "New York", "Washington")
 
 exp_phase_countries <- c("China","New York","Italy","Spain","California","Washington")
 exp_start <- as.Date(c("2020-01-22", "2020-03-06", rep("2020-03-01", 4)))
@@ -273,11 +273,14 @@ us_states_current %>%
 
 ## Comparison of US to selected other countries
 
+"Day of pandemic" is an adjustment to allow for different local pandemic start dates 
+
 Vs. Italy, Spain and China.
 
 ```{r us-italy-china-spain-plot, echo=FALSE, warning=FALSE, message=FALSE}
+countries <- c("China", "Italy", "Spain", "US")
 by_country %>%
-  filter(country %in% lag_countries) %>%
+  filter(country %in% countries) %>%
   mutate("day" = date - min(date),
          "lag_date" = date - lag_days[country],
          "lag_days" = lag_date - min(date)) %>%
@@ -291,7 +294,7 @@ by_country %>%
   ggtitle(paste("Confirmed cases as of", latest_date))
 
 by_country %>%
-  filter(country %in% lag_countries) %>%
+  filter(country %in% countries) %>%
   mutate("day" = date - min(date),
          "lag_date" = date - lag_days[country],
          "lag_days" = lag_date - min(date)) %>%
@@ -308,10 +311,12 @@ by_country %>%
 Focus on Italy.
 
 ```{r us-italy-plot, echo=FALSE, warning=FALSE, message=FALSE}
+
+countries <- c("Italy", "US")
 by_country %>%
-  filter(country=="Italy" | country=="US") %>%
+  filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = if_else(country=="Italy", date, date - days(11)),
+         "lag_date" = date - days(lag_days[country] - lag_days["Italy"]),
          "lag_days" = lag_date - min(date)) %>%
   ggplot(aes(x=lag_days, y=confirmed, group=country)) +
   geom_point(aes(color=country)) +
@@ -322,9 +327,9 @@ by_country %>%
   ggtitle(paste("Confirmed cases as of", latest_date))
 
 by_country %>%
-  filter(country=="Italy" | country=="US") %>%
+  filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = if_else(country=="Italy", date, date - days(11)),
+         "lag_date" = date - days(lag_days[country] - lag_days["Italy"]),
          "lag_days" = lag_date - min(date)) %>%
   ggplot(aes(x=lag_days, y=deaths, group=country)) +
   geom_point(aes(color=country)) +
@@ -341,13 +346,12 @@ by_country %>%
 
 
 ```{r country-state-plot, echo=FALSE, warning=FALSE, message=FALSE}
-lags_behind_italy <- c(0, 19, 11, 19)
-names(lags_behind_italy) <- c("Italy", "California", "New York", "Washington")
+countries <- c("Italy", "California", "New York", "Washington")
 
 by_country_state %>%
-  filter(country %in% names(lags_behind_italy)) %>%
+  filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = date - days(lags_behind_italy[country]),
+         "lag_date" = date - days(lag_days[country] - lag_days["Italy"]),
          "lag_days" = lag_date - min(date)) %>%
   rename("region" = country) %>%
   ggplot(aes(x=lag_days, y=confirmed, group=region)) +
@@ -359,9 +363,9 @@ by_country_state %>%
   ggtitle(paste("Confirmed cases as of", latest_date))
 
 by_country_state %>%
-  filter(country %in% names(lags_behind_italy)) %>%
+  filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = date - days(lags_behind_italy[country]),
+         "lag_date" = date - days(lag_days[country] - lag_days["Italy"]),
          "lag_days" = lag_date - min(date)) %>%
   rename("region" = country) %>%
   ggplot(aes(x=lag_days, y=deaths, group=region)) +
