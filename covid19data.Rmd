@@ -10,6 +10,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 require(tidyverse)
 require(lubridate)
+require(fs)
 require(broom)
 require(kableExtra)
 require(maps)
@@ -45,11 +46,12 @@ Some cautions:
 * [Epidemic modeling](http://gabgoh.github.io/COVID/index.html)
 * [NEJM Coronavirus papers](https://www.nejm.org/coronavirus?cid=DM88311&bid=165352681)
 * [The COVID Tracking Project](https://covidtracking.com/)
+* [Our World in Data](https://ourworldindata.org/coronavirus)
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 # refresh data
 #git pull --recurse-submodules
-git submodule update --remote --recursive
+#git submodule update --remote --recursive
 ```
 
 ```{r covidtracking-data-load, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
@@ -120,8 +122,9 @@ names(exp_end) <- exp_phase_countries
 cutoff_date <- today()
 ```
 
-```{r csse-data-load, echo=FALSE, warning=FALSE, message=FALSE}
 
+```{r csse-time-series-data, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+# time series files using the old data model, good through March 22 and 
 data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 
 # load and tidy the data
@@ -155,7 +158,63 @@ recovered <- read_csv(paste0(data_dir, "/time_series_19-covid-Recovered.csv")) %
 complete <- confirmed %>%
   left_join(recovered) %>%
   left_join(deaths) %>%
-  filter(!is.na(confirmed), !is.na(recovered), !is.na(deaths))
+  filter(!is.na(confirmed), !is.na(recovered), !is.na(deaths),
+         date < "2020-03-23")
+
+```
+
+
+```{r csse-new-data-model-load, echo=FALSE, warning=FALSE, message=FALSE}
+
+data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
+
+data_model_start_dates <- as.Date(c("01-22-2020", "03-23-2020"), "%m-%d-%Y")
+
+data_models <- Vectorize(function(obs_date, start_dates) {
+  end_dates <- lead(c(start_dates,today())-days(1))[1:length(start_dates)]
+  intervals <- interval(start = start_dates, end = end_dates)
+  which(obs_date %within% intervals)
+}, "obs_date")
+
+report_files <- dir_ls(data_dir, glob="*.csv")
+report_dates <- as.Date(path_ext_remove(path_file(report_files)), "%m-%d-%Y")
+report_models <- data_model(report_dates, data_model_start_dates)
+report_sets <- as_tibble(list(file = report_files,
+                              date = report_dates,
+                              model = report_models))
+
+report_data <- report_sets %>%
+  split(.$model) %>%
+  purrr::map(~ .x %>%
+               dplyr::pull(file) %>%
+               map_dfr(read_csv, .id="file", col_types=cols(
+  `Province/State` = col_character(),
+  `Country/Region` = col_character(),
+  `Last Update` = col_character(),
+  Confirmed = col_double(),
+  Deaths = col_double(),
+  Recovered = col_double(),
+  Latitude = col_double(),
+  Longitude = col_double()
+)))
+
+complete <- rbind(complete,
+                  report_data[[2]] %>%
+  mutate("date" = as.Date(Last_Update)) %>%
+  rename("state"=Province_State,
+         "country"=Country_Region,
+         "confirmed"=Confirmed,
+         "deaths"=Deaths,
+         "recovered"=Recovered,
+         "Long"=Long_) %>%
+  select(state, country, Lat, Long, date, confirmed, recovered, deaths)
+)
+```
+
+
+```{r load-new-data-model}
+
+# build data structures for plotting
 
 by_region <- complete %>%
   filter(country=="US") %>%
@@ -416,7 +475,7 @@ by_country_state %>%
   ggtitle(paste("Deaths as of", latest_date))
 ```
 
-## Testing numbers from `covidtracking.com`
+## Number of tests administered (from `covidtracking.com`)
 
 ```{r state-testing-rates, echo=FALSE, warning=FALSE, message=FALSE}
 states <- c("California", "New York", "Washington")
