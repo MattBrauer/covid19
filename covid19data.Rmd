@@ -19,6 +19,7 @@ library(gganimate)
 library(gifski)
 require(usmap)
 require(git2r)
+require(httr)
 ```
 Latest version: `r commits(repository("."))[[1]]$message`
 
@@ -43,6 +44,7 @@ Some cautions:
 * [Kinsa US Health Weather Map](https://healthweather.us/): real-time tracking of atypical fever frequencies
 * [Epidemic modeling](http://gabgoh.github.io/COVID/index.html)
 * [NEJM Coronavirus papers](https://www.nejm.org/coronavirus?cid=DM88311&bid=165352681)
+* [The COVID Tracking Project](https://covidtracking.com/)
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 # refresh data
@@ -50,11 +52,40 @@ Some cautions:
 git submodule update --remote --recursive
 ```
 
+```{r covidtracking-data-load, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 
-```{r data-setup, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+covid_tracking <- "https://covidtracking.com/api/"
+covid_dataset_names <- c("states", "states/daily", "states/info",
+                    "us", "us/daily",
+                    "counties", "urls", "press")
+
+covid_datasets <- lapply(as.list(paste0(covid_tracking, covid_dataset_names, ".csv")),
+       function(api_call) {
+         response <- GET(api_call)
+         content(response)
+       })
+
+names(covid_datasets) <- covid_dataset_names
+
+covid_datasets$states_qc <- covid_datasets$states %>%
+  select(state, lastUpdateEt, checkTimeEt, dateModified, dateChecked, grade)
+
+covid_datasets$states <- covid_datasets$states %>%
+  select(-lastUpdateEt, -checkTimeEt, -dateModified, -dateChecked, -grade)
+
+covid_datasets$`states/daily` <- covid_datasets$`states/daily` %>%
+  mutate(date = as.Date(as.character(date), "%Y%m%d")) %>%
+  select(-dateChecked)
+
+covid_datasets$`us/daily` <- covid_datasets$`us/daily` %>%
+  mutate(date = as.Date(as.character(date), "%Y%m%d"))
+
+```
+
+
+
+```{r state-data-setup, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 states_map <- map_data("state")
-
-data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 
 state_abbreviations <- c("AL", "AK", "AZ", "KS", "UT", "CO", "CT", 
                          "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "AR", 
@@ -89,7 +120,10 @@ names(exp_end) <- exp_phase_countries
 cutoff_date <- today()
 ```
 
-```{r data-load, echo=FALSE, warning=FALSE, message=FALSE}
+```{r csse-data-load, echo=FALSE, warning=FALSE, message=FALSE}
+
+data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_time_series"
+
 # load and tidy the data
 confirmed <- read_csv(paste0(data_dir, "/time_series_19-covid-Confirmed.csv")) %>%
   pivot_longer(cols=c(-`Province/State`, -`Country/Region`, -Lat, -Long),
@@ -340,7 +374,7 @@ by_country %>%
   geom_point(aes(color=country)) +
   geom_line(aes(color=country)) +
   xlab("Day of pandemic") +
-  ylab("Confirmed cases") +
+  ylab("Deaths") +
   xlim(20, NA) +
   ggtitle(paste("Deaths as of", latest_date))
 
@@ -380,6 +414,22 @@ by_country_state %>%
   ylab("Deaths") +
   xlim(20, NA) +
   ggtitle(paste("Deaths as of", latest_date))
+```
+
+## Testing numbers from `covidtracking.com`
+
+```{r state-testing-rates, echo=FALSE, warning=FALSE, message=FALSE}
+states <- c("California", "New York", "Washington")
+
+covid_datasets$`states/daily` %>%
+  filter(state %in% state_abbreviations[states]) %>%
+  ggplot(aes(x=date, y=total, color=state)) +
+  geom_line() +
+  geom_bar(aes(y=positive, fill=state), stat = "identity", position = 'dodge') +
+  xlab("Date") +
+  ylab("Test counts") +
+  ggtitle("Number of tests administered and number positive")
+
 ```
 
 ## Estimating maximum rate of exponential growth in number of observed cases
