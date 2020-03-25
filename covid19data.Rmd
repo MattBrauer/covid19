@@ -48,6 +48,11 @@ Some cautions:
 * [The COVID Tracking Project](https://covidtracking.com/)
 * [Our World in Data](https://ourworldindata.org/coronavirus)
 
+## Other news and information links
+
+* [The Atlantic Covid-19 coverage](https://www.theatlantic.com/category/what-you-need-know-coronavirus/)
+
+
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 # refresh data
 #git pull --recurse-submodules
