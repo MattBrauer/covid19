@@ -110,7 +110,7 @@ state_names <- c("Alabama", "Alaska", "Arizona", "Kansas",
 names(state_names) <- state_abbreviations
 names(state_abbreviations) <- state_names
 
-lag_days <- c(0, 33, 44, 44, 53, 44, 53)
+lag_days <- c(0, 31, 36, 40, 53, 44, 53)
 names(lag_days) <- c("China","Italy","Spain","US", "California", "New York", "Washington")
 
 exp_phase_countries <- c("China","New York","Italy","Spain","California","Washington")
@@ -124,7 +124,9 @@ cutoff_date <- today()
 
 
 ```{r csse-time-series-data, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-# time series files using the old data model, good through March 22 and 
+# time series files using the old data model, good through March 22 and deprecated thereafter
+# reloading and keeping this as a comparison/sanity check on the daily data
+
 data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_time_series"
 
 # load and tidy the data
@@ -155,7 +157,7 @@ recovered <- read_csv(paste0(data_dir, "/time_series_19-covid-Recovered.csv")) %
   rename("recovered" = cases)
 
 # join the variables, removing empty rows
-complete <- confirmed %>%
+complete_ts <- confirmed %>%
   left_join(recovered) %>%
   left_join(deaths) %>%
   filter(!is.na(confirmed), !is.na(recovered), !is.na(deaths),
@@ -166,49 +168,107 @@ complete <- confirmed %>%
 
 ```{r csse-new-data-model-load, echo=FALSE, warning=FALSE, message=FALSE}
 
+# daily reports data. follows different data models at different times
+
 data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
 
-data_model_start_dates <- as.Date(c("01-22-2020", "03-23-2020"), "%m-%d-%Y")
+data_model_start_dates <- as.Date(c("01-22-2020", "03-22-2020"), "%m-%d-%Y")
 
 data_models <- Vectorize(function(obs_date, start_dates) {
-  end_dates <- lead(c(start_dates,today())-days(1))[1:length(start_dates)]
+  end_dates <- lead(c(start_dates,today() + days(1))-days(1))[1:length(start_dates)]
   intervals <- interval(start = start_dates, end = end_dates)
   which(obs_date %within% intervals)
 }, "obs_date")
 
 report_files <- dir_ls(data_dir, glob="*.csv")
 report_dates <- as.Date(path_ext_remove(path_file(report_files)), "%m-%d-%Y")
-report_models <- data_model(report_dates, data_model_start_dates)
+report_models <- data_models(report_dates, data_model_start_dates)
 report_sets <- as_tibble(list(file = report_files,
-                              date = report_dates,
+                              date = path_ext_remove(path_file(report_files)),
                               model = report_models))
 
-report_data <- report_sets %>%
-  split(.$model) %>%
-  purrr::map(~ .x %>%
-               dplyr::pull(file) %>%
-               map_dfr(read_csv, .id="file", col_types=cols(
+data_columns <- cols(
   `Province/State` = col_character(),
   `Country/Region` = col_character(),
-  `Last Update` = col_character(),
+  Province_State = col_character(),
+  Country_Region = col_character(),
+  `Last Update` = col_skip(),
+  Last_Update = col_skip(),
   Confirmed = col_double(),
   Deaths = col_double(),
   Recovered = col_double(),
   Latitude = col_double(),
-  Longitude = col_double()
-)))
+  Longitude = col_double(),
+  Lat = col_double(),
+  Long_ = col_double(),
+  FIPS = col_character(),
+  Admin2 = col_character()
+)
 
-complete <- rbind(complete,
-                  report_data[[2]] %>%
-  mutate("date" = as.Date(Last_Update)) %>%
+report_data <- do.call(rbind.data.frame, report_sets %>%
+  split(.$model) %>%
+  purrr::map(~ .x %>%
+              select(date, file) %>%
+              deframe() %>%
+               map_dfr(read_csv, .id="date",
+                       col_types=data_columns) %>%
+               add_column(!!!c("FIPS","Admin2")[!c("FIPS","Admin2") %in% names(.)]) %>%
+               rename_at(vars(matches("\\/")), function(x) gsub("\\/","_",x)) %>%
+               rename_at(vars(matches("_$")), function(x) gsub("_$","",x)) %>%
+               rename_at(vars(matches("itude$")), function(x) gsub("itude$","",x)) %>%
+               rename_at(vars(matches("FIPS")), function(x) "FIPS") %>%
+               rename_at(vars(matches("Admin2")), function(x) "Admin2") %>%
+               mutate(date = as.Date(date, "%m-%d-%Y"),
+                      FIPS = ifelse(FIPS=="FIPS", NA, FIPS),
+                      Admin2 = ifelse(Admin2=="Admin2", NA, Admin2)) %>%
+               select(date, FIPS, Admin2, Province_State, Country_Region,
+                      Confirmed, Deaths, Recovered)
+  ))
+
+## recoding country name errors
+countries <- report_data %>%
+  rename("country" = Country_Region) %>%
+  mutate("name" = country) %>%
+  mutate(country = ifelse(grepl("Bahamas", country), "Bahamas", country),
+         country = ifelse(grepl("China", country), "China", country),
+         country = ifelse(grepl("Congo", country), "Congo", country),
+         country = ifelse(grepl("Czech", country), "Czechia", country),
+         country = ifelse(grepl("Gambia", country), "Gambia", country),
+         country = ifelse(grepl("Guinea", country), "Guinea", country),
+         country = ifelse(grepl("Hong Kong", country), "Hong Kong", country),
+         country = ifelse(grepl("Iran", country), "Iran", country),
+         country = ifelse(grepl("Ireland$", country), "Ireland", country),
+         country = ifelse(grepl("Maca", country), "Macau", country),
+         country = ifelse(grepl("Martin$", country), "Saint Martin", country),
+         country = ifelse(grepl("Moldova$", country), "Moldova", country),
+         country = ifelse(grepl("Palestin", country), "Palestine", country),
+         country = ifelse(grepl("Russia", country), "Russia", country),
+         country = ifelse(grepl("Timor", country), "Timor", country),
+         country = ifelse(grepl("Viet", country), "Vietnam", country),
+         country = ifelse(grepl("Taiwan", country) | grepl("Taipei", country),
+                          "Taiwan", country),
+         country = ifelse(country=="United Kingdom", "UK", country),
+         country = ifelse(country=="Korea, South", "South Korea", country),
+         country = ifelse(country=="Republic of Korea", "North Korea", country),
+         country = ifelse(country=="Holy See" | grepl("Vatican", country),
+                          "Vatican City", country),
+         country = ifelse(country=="Jersey" | country=="Guernsey", "Channel Islands", country),
+         country = ifelse(country=="Cote d'Ivoire", "Ivory Coast", country)) %>%
+  select(name, country) %>%
+  distinct() %>%
+  filter(!is.na(country)) %>%
+  arrange(country) %>%
+  deframe()
+
+
+complete <- report_data %>%
   rename("state"=Province_State,
          "country"=Country_Region,
          "confirmed"=Confirmed,
          "deaths"=Deaths,
-         "recovered"=Recovered,
-         "Long"=Long_) %>%
-  select(state, country, Lat, Long, date, confirmed, recovered, deaths)
-)
+         "recovered"=Recovered) %>%
+  mutate(country = recode(country, !!!countries))
+
 ```
 
 
@@ -457,7 +517,7 @@ by_country_state %>%
   geom_line(aes(color=region)) +
   xlab("Day of pandemic") +
   ylab("Confirmed cases") +
-  xlim(20, NA) +
+#  xlim(20, NA) +
   ggtitle(paste("Confirmed cases as of", latest_date))
 
 by_country_state %>%
