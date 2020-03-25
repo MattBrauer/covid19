@@ -260,7 +260,6 @@ countries <- report_data %>%
   arrange(country) %>%
   deframe()
 
-
 complete <- report_data %>%
   rename("state"=Province_State,
          "country"=Country_Region, 
