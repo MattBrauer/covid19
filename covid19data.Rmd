@@ -48,10 +48,13 @@ Some cautions:
 * [NEJM Coronavirus papers](https://www.nejm.org/coronavirus?cid=DM88311&bid=165352681)
 * [The COVID Tracking Project](https://covidtracking.com/)
 * [Our World in Data](https://ourworldindata.org/coronavirus)
+* [JHU news releases](https://releases.jhu.edu/)
+* [SF Chronicle California case tracker](https://projects.sfchronicle.com/2020/coronavirus-map/)
 
 ## Other news and information links
 
 * [The Atlantic Covid-19 coverage](https://www.theatlantic.com/category/what-you-need-know-coronavirus/)
+* [Home testing](https://www.ninetylawn.com/at-home-coronavirus-testing/)
 
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
