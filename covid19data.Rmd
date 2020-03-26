@@ -122,12 +122,6 @@ names(state_abbreviations) <- state_names
 lag_days <- c(0, 31, 36, 40, 53, 44, 53)
 names(lag_days) <- c("China","Italy","Spain","US", "California", "New York", "Washington")
 
-exp_phase_countries <- c("China","New York","Italy","Spain","California","Washington")
-exp_start <- as.Date(c("2020-01-22", "2020-03-06", rep("2020-03-01", 4)))
-exp_end <- as.Date(c("2020-02-07", "2020-06-01", rep("2020-06-01", 4)))
-names(exp_start) <- exp_phase_countries
-names(exp_end) <- exp_phase_countries
-
 cutoff_date <- today()
 ```
 
@@ -308,7 +302,10 @@ by_country_state <- complete %>%
   select(-st) %>%
   mutate(country = if_else(country=="US", state, country)) %>%
   group_by(country, date) %>%
-  summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths))
+  summarize(confirmed=sum(confirmed), recovered=sum(recovered), deaths=sum(deaths)) %>%
+  filter(country != "US") %>%
+  bind_rows(by_country) %>%
+  distinct()
 
 by_region_cumulative <- by_region %>%
   group_by(state) %>%
@@ -335,24 +332,6 @@ latest_date <- complete %>%
   dplyr::pull(date)
 
 latest_date <- as.Date(latest_date)
-
-exp_fits <- by_country_state %>%
-  group_by(country) %>%
-  do(fit = lm(log10(confirmed + 1) ~ date, data=.)) %>%
-  augment(fit) %>%
-  rename("log_confirmed" = `log10.confirmed...1.`)
-
-exp_phase_fit <- by_country_state %>%
-  filter(country %in% exp_phase_countries,
-         date <= exp_end[country] & date >= exp_start[country]) %>%
-  mutate("day" = date - exp_start[country]) %>%
-  group_by(country) %>%
-  do(fit = lm(log10(confirmed + 1) ~ day, data=.))
-
-exp_phase <- exp_phase_fit %>%
-  augment(fit) %>%
-  rename("log_confirmed" = `log10.confirmed...1.`)
-
 ```
 
 
@@ -567,25 +546,76 @@ The dates bounding the exponential phase of growth were estimated by eye, and th
 
 ```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
+
+exp_phase_countries <- c("China","New York","Italy","Spain","California","Washington", "US")
+exp_start <- as.Date(c("2020-01-22", "2020-03-08", rep("2020-03-01", 5)))
+exp_end <- as.Date(c("2020-02-07", "2020-06-01", "2020-03-22", rep("2020-06-01", 5)))
+
+exp_start_deaths <- as.Date(c("2020-01-22", "2020-03-02", rep("2020-03-01", 5)))
+exp_end_deaths <- as.Date(c("2020-02-07", "2020-03-24", rep("2020-06-01", 5)))
+
+names(exp_start) <- names(exp_start_deaths) <- exp_phase_countries
+names(exp_end) <- names(exp_end_deaths) <- exp_phase_countries
+
+exp_phase_fit <- by_country_state %>%
+  filter(country %in% exp_phase_countries,
+         date <= exp_end[country] & date >= exp_start[country]) %>%
+  mutate("day" = date - exp_start[country]) %>%
+  group_by(country) %>%
+  do(fit = lm(log(confirmed + 1) ~ day, data=.))
+
+exp_phase_fit_deaths <- by_country_state %>%
+  filter(country %in% exp_phase_countries,
+         date <= exp_end_deaths[country] & date >= exp_start_deaths[country]) %>%
+  mutate("day" = date - exp_start_deaths[country]) %>%
+  group_by(country) %>%
+  do(fit = lm(log(deaths + 1) ~ day, data=.))
+```
+
+```{r curve-fit-plots, echo=FALSE, warning=FALSE, message=FALSE}
 by_country_state %>%
-  filter(country %in% exp_phase_countries) %>%
-  mutate("day" = date - lag_days[country], "log_confirmed" = log10(confirmed + 1)) %>%
+  filter(country %in% c(exp_phase_countries, "US")) %>%
+  mutate("day" = date - lag_days[country], "log_confirmed" = log(confirmed + 1)) %>%
   ggplot(aes(x=date, y=log_confirmed), color=country) +
   geom_line(aes(color=country)) +
   xlab("Date") +
-  ylab("Log10(confirmed cases)") +
+  ylab("Log(confirmed cases)") +
   ggtitle(paste("Confirmed cases as of", latest_date))
 
-exp_phase %>%
+exp_phase_fit %>%
+  augment(fit) %>%
+  rename("log_confirmed" = `log.confirmed...1.`) %>%
   ggplot(aes(x=day, y=log_confirmed), color=country) +
   geom_point(aes(color=country)) +
   geom_line(aes(y=.fitted, color=country)) +
   xlab("Day of exponential phase") +
   ylab("log10(confirmed cases)") +
   ggtitle(paste("Exponential phase of growth in confirmed cases as of", latest_date))
+
+by_country_state %>%
+  filter(country %in% c(exp_phase_countries, "US")) %>%
+  mutate("day" = date - lag_days[country], "log_deaths" = log(deaths + 1)) %>%
+  ggplot(aes(x=date, y=log_deaths), color=country) +
+  geom_line(aes(color=country)) +
+  xlab("Date") +
+  ylab("log(deaths)") +
+  ggtitle(paste("Deaths as of", latest_date))
+
+exp_phase_fit_deaths %>%
+  augment(fit) %>%
+  rename("log_deaths" = `log.deaths...1.`) %>%
+#  mutate("day" = day - lag_days[country]) %>%
+  ggplot(aes(x=day, y=log_deaths), color=country) +
+  geom_point(aes(color=country)) +
+  geom_line(aes(y=.fitted, color=country)) +
+  xlab("Day of exponential phase") +
+  ylab("log(deaths)") +
+  ggtitle(paste("Exponential phase of growth in deaths as of", latest_date))
+
 ```
 
-```{r exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
+```{r exp-fit-tables, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
+
 exp_phase_tabular <- exp_phase_fit %>%
   tidy(fit) %>%
   filter(term=="day") %>%
@@ -608,5 +638,28 @@ exp_phase_tabular %>%
   xlab("Region") +
   ylab("Exponential parameter") +
   ggtitle("Maximum rate of exponential growth (+/- SE) in confirmed cases")
+
+exp_phase_deaths_tabular <- exp_phase_fit_deaths %>%
+  tidy(fit) %>%
+  filter(term=="day") %>%
+  mutate("start"=exp_start[country], "end"=exp_end[country]) %>%
+  rename("region"=country)
+
+exp_phase_deaths_tabular %>%
+  select(region, start, end, estimate) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+exp_phase_deaths_tabular %>%
+  arrange(desc(estimate)) %>%
+  ungroup() %>%
+  ggplot(aes(x=reorder(region, desc(estimate)), y=estimate)) +
+  geom_bar(stat="identity", width=0.5, fill="steelblue") +
+  geom_errorbar(aes(x=region, ymin=estimate - std.error, ymax=estimate + std.error),
+                width=0.2) +
+  theme_minimal() +
+  xlab("Region") +
+  ylab("Exponential parameter") +
+  ggtitle("Maximum rate of exponential growth (+/- SE) in deaths")
 ```
 
