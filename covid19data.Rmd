@@ -26,6 +26,7 @@ Latest version: `r commits(repository("."))[[1]]$message`
 
 ## Background
 
+
 This page contains plots of unprocessed data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6).
 
 (Also see relevant Lancet paper here: [An interactive web-based dashboard to track COVID-19 in real time](https://doi.org/10.1016/S1473-3099(20)30120-1).)
