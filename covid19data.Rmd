@@ -506,7 +506,7 @@ by_country_state %>%
   geom_line(aes(color=region)) +
   xlab("Day of pandemic") +
   ylab("Confirmed cases") +
-#  xlim(20, NA) +
+  xlim(20, NA) +
   ggtitle(paste("Confirmed cases as of", latest_date))
 
 by_country_state %>%
