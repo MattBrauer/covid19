@@ -362,7 +362,7 @@ by_country %>%
 
 
 
-## Confirmed cases by US state
+## Confirmed cases and deaths by US state
 
 Cumulative number of confirmed cases aggregated across all regions within state.
 
@@ -380,6 +380,21 @@ states_map %>%
   scale_fill_viridis_c(option = "C") +
   coord_fixed(1.3) +
   ggtitle(paste("Confirmed cases as of", latest_date))
+
+states_map %>%
+  left_join(
+    us_states_current %>%
+    mutate(fips = state_abbreviations[state],
+          region = tolower(state)) %>%
+    filter(!is.na(region)) %>%
+    select(region, deaths)
+  ) %>%
+  ggplot(aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = deaths), color = "white") +
+  scale_fill_viridis_c(option = "C") +
+  coord_fixed(1.3) +
+  ggtitle(paste("Statewide deaths as of", latest_date))
+
 ```
 
 ## Current status of most affected states
@@ -412,7 +427,7 @@ us_states_current %>%
   coord_flip() +
   xlab("state") +
   ylab("deaths") +
-  ggtitle(paste("Deaths as of", latest_date))
+  ggtitle(paste("Statewide deaths as of", latest_date))
 
 ```
 
