@@ -50,6 +50,7 @@ Some cautions:
 * [Our World in Data](https://ourworldindata.org/coronavirus)
 * [JHU news releases](https://releases.jhu.edu/)
 * [SF Chronicle California case tracker](https://projects.sfchronicle.com/2020/coronavirus-map/)
+* [Reat-time tracking of pathogen evolution](https://nextstrain.org/)
 
 ## Other news and information links
 
@@ -438,13 +439,34 @@ us_states_current %>%
 Vs. Italy, Spain and China.
 
 ```{r us-italy-china-spain-plot, echo=FALSE, warning=FALSE, message=FALSE}
+lag_days <- function(dataset, countries) {
+ first_deciles <- dataset %>%
+  ungroup() %>%
+  filter(country %in% countries) %>%
+  summarize(confirmed = max(confirmed, na.rm=TRUE) / 10,
+            deaths = max(deaths, na.rm=TRUE) / 10,
+            recovered = max(recovered, na.rm=TRUE) / 10)
+ 
+  dataset %>%
+    filter(country %in% countries) %>%
+    group_by(country) %>%
+    summarize(confirmed = max(date[confirmed < (first_deciles %>% dplyr::pull(confirmed))], na.rm=TRUE),
+              deaths = max(date[deaths < (first_deciles %>% dplyr::pull(deaths))], na.rm=TRUE),
+              recovered = max(date[recovered < (first_deciles %>% dplyr::pull(recovered))], na.rm=TRUE))
+
+  }
+
 countries <- c("China", "Italy", "Spain", "US")
+
+lag_day <- lag_days(by_country, countries) %>% select(country, confirmed) %>% deframe()
+
 by_country %>%
   filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = date - lag_days[country],
-         "lag_days" = lag_date - min(date)) %>%
-  ggplot(aes(x=lag_days, y=confirmed, group=country)) +
+         "lag_date" = date - lag_day[country]) %>%
+  ungroup() %>%
+  mutate("lag_date" = lag_date - min(lag_date)) %>%
+  ggplot(aes(x=lag_date, y=confirmed, group=country)) +
   geom_point(aes(color=country)) +
   geom_line(aes(color=country)) +
   geom_bar(aes(y=deaths, fill=country), stat="identity") +
@@ -453,17 +475,21 @@ by_country %>%
   xlim(0, NA) +
   ggtitle(paste("Confirmed cases as of", latest_date))
 
+lag_day <- lag_days(by_country, countries) %>% select(country, deaths) %>% deframe()
+
 by_country %>%
   filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = date - lag_days[country],
-         "lag_days" = lag_date - min(date)) %>%
-  ggplot(aes(x=lag_days, y=deaths, group=country)) +
+         "lag_date" = date - lag_day[country]) %>%
+  ungroup() %>%
+  ungroup() %>%
+  mutate("lag_date" = lag_date - min(lag_date)) %>%
+  ggplot(aes(x=lag_date, y=deaths, group=country)) +
   geom_point(aes(color=country)) +
   geom_line(aes(color=country)) +
   xlab("Day of pandemic") +
   ylab("Deaths") +
-  xlim(0, NA) +
+  xlim(-8, NA) +
   ggtitle(paste("Deaths as of", latest_date))
 
 ```
@@ -473,30 +499,30 @@ Focus on Italy.
 ```{r us-italy-plot, echo=FALSE, warning=FALSE, message=FALSE}
 
 countries <- c("Italy", "US")
-by_country %>%
-  filter(country %in% countries) %>%
-  mutate("day" = date - min(date),
-         "lag_date" = date - days(lag_days[country] - lag_days["Italy"]),
-         "lag_days" = lag_date - min(date)) %>%
-  ggplot(aes(x=lag_days, y=confirmed, group=country)) +
-  geom_point(aes(color=country)) +
-  geom_line(aes(color=country)) +
-  xlab("Day of pandemic") +
-  ylab("Confirmed cases") +
-  xlim(20, NA) +
-  ggtitle(paste("Confirmed cases as of", latest_date))
+lag_day <- lag_days(by_country, countries) %>% select(country, confirmed) %>% deframe()
 
 by_country %>%
   filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = date - days(lag_days[country] - lag_days["Italy"]),
-         "lag_days" = lag_date - min(date)) %>%
-  ggplot(aes(x=lag_days, y=deaths, group=country)) +
+         "lag_date" = date - lag_day[country]) %>%
+  ggplot(aes(x=lag_date, y=confirmed, group=country)) +
+  geom_point(aes(color=country)) +
+  geom_line(aes(color=country)) +
+  xlab("Day of pandemic") +
+  ylab("Confirmed cases") +
+  ggtitle(paste("Confirmed cases as of", latest_date))
+
+lag_day <- lag_days(by_country, countries) %>% select(country, deaths) %>% deframe()
+
+by_country %>%
+  filter(country %in% countries) %>%
+  mutate("day" = date - min(date),
+         "lag_date" = date - lag_day[country]) %>%
+  ggplot(aes(x=lag_date, y=deaths, group=country)) +
   geom_point(aes(color=country)) +
   geom_line(aes(color=country)) +
   xlab("Day of pandemic") +
   ylab("Deaths") +
-  xlim(20, NA) +
   ggtitle(paste("Deaths as of", latest_date))
 
 ```
@@ -508,34 +534,32 @@ by_country %>%
 ```{r country-state-plot, echo=FALSE, warning=FALSE, message=FALSE}
 countries <- c("Italy", "California", "New York", "Washington")
 
-lag_days_new <- c("China"=0,"Italy"=31,"Spain"=36,"US"=40,"California"=57,"New York"=9,"Washington"=53)
+lag_day <- lag_days(by_country_state, countries) %>% select(country, confirmed) %>% deframe()
 
 by_country_state %>%
   filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = date - days(lag_days_new[country] - lag_days_new["Italy"]),
-         "lag_days" = lag_date - min(date)) %>%
+         "lag_date" = date - lag_day[country]) %>%
   rename("region" = country) %>%
-  ggplot(aes(x=lag_days, y=confirmed, group=region)) +
+  ggplot(aes(x=lag_date, y=confirmed, group=region)) +
   geom_point(aes(color=region)) +
   geom_line(aes(color=region)) +
   xlab("Day of pandemic") +
   ylab("Confirmed cases") +
-  xlim(20, NA) +
   ggtitle(paste("Confirmed cases as of", latest_date))
+
+lag_day <- lag_days(by_country_state, countries) %>% select(country, deaths) %>% deframe()
 
 by_country_state %>%
   filter(country %in% countries) %>%
   mutate("day" = date - min(date),
-         "lag_date" = date - days(lag_days_new[country] - lag_days_new["Italy"]),
-         "lag_days" = lag_date - min(date)) %>%
+         "lag_date" = date - lag_day[country]) %>%
   rename("region" = country) %>%
-  ggplot(aes(x=lag_days, y=deaths, group=region)) +
+  ggplot(aes(x=lag_date, y=deaths, group=region)) +
   geom_point(aes(color=region)) +
   geom_line(aes(color=region)) +
   xlab("Day of pandemic") +
   ylab("Deaths") +
-  xlim(20, NA) +
   ggtitle(paste("Deaths as of", latest_date))
 ```
 
@@ -588,9 +612,14 @@ exp_phase_fit_deaths <- by_country_state %>%
 ```
 
 ```{r curve-fit-plots, echo=FALSE, warning=FALSE, message=FALSE}
+
+countries <- c(exp_phase_countries, "US")
+
+lag_day <- lag_days(by_country_state, countries) %>% select(country, confirmed) %>% deframe()
+
 by_country_state %>%
   filter(country %in% c(exp_phase_countries, "US")) %>%
-  mutate("day" = date - lag_days[country], "log_confirmed" = log(confirmed + 1)) %>%
+  mutate("day" = date - lag_day[country], "log_confirmed" = log(confirmed + 1)) %>%
   ggplot(aes(x=date, y=log_confirmed), color=country) +
   geom_line(aes(color=country)) +
   xlab("Date") +
@@ -607,9 +636,11 @@ exp_phase_fit %>%
   ylab("log10(confirmed cases)") +
   ggtitle(paste("Exponential phase of growth in confirmed cases as of", latest_date))
 
+lag_day <- lag_days(by_country_state, countries) %>% select(country, deaths) %>% deframe()
+
 by_country_state %>%
   filter(country %in% c(exp_phase_countries, "US")) %>%
-  mutate("day" = date - lag_days[country], "log_deaths" = log(deaths + 1)) %>%
+  mutate("day" = date - lag_day[country], "log_deaths" = log(deaths + 1)) %>%
   ggplot(aes(x=date, y=log_deaths), color=country) +
   geom_line(aes(color=country)) +
   xlab("Date") +
@@ -619,7 +650,6 @@ by_country_state %>%
 exp_phase_fit_deaths %>%
   augment(fit) %>%
   rename("log_deaths" = `log.deaths...1.`) %>%
-#  mutate("day" = day - lag_days[country]) %>%
   ggplot(aes(x=day, y=log_deaths), color=country) +
   geom_point(aes(color=country)) +
   geom_line(aes(y=.fitted, color=country)) +
