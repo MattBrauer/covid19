@@ -57,6 +57,11 @@ Some cautions:
 * [The Atlantic Covid-19 coverage](https://www.theatlantic.com/category/what-you-need-know-coronavirus/)
 * [Home testing](https://www.ninetylawn.com/at-home-coronavirus-testing/)
 
+## Updates
+
+Currently, plots are aligned by setting the local day 0 as the date at which a given country/locality crosses 10% of the maximum cases, deaths, etc. in a comparison.
+
+To do: automate the estimation of maximum exponential parameter for various curves. Currently this is done by manually setting a date range over which the fit is done.
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 # refresh data
