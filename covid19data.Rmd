@@ -2,7 +2,12 @@
 title: "JHU COVID-19 data"
 author: "Matt Brauer"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
-output: html_document
+output:
+  BiocStyle::html_document:
+    highlight: pygments
+    number_sections: yes
+    theme: united
+    toc: yes
 ---
 
 
@@ -24,7 +29,7 @@ require(httr)
 ```
 Latest version: `r commits(repository("."))[[1]]$message`
 
-## Background
+# Background
 
 
 This page contains plots of unprocessed data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6).
@@ -40,7 +45,7 @@ Some cautions:
 * Reported numbers are absolute cumulative, not rates. They have not been scaled to population size.
 * Dates are dates reported, not necessarily date of observation.
 
-## Other (more sophisticated and useful) tracking resources
+# Other (more sophisticated and useful) tracking resources
 
 * [UW Virology COVID-19 Dashboard](http://depts.washington.edu/labmed/covid19/)
 * [Kinsa US Health Weather Map](https://healthweather.us/): real-time tracking of atypical fever frequencies
@@ -52,12 +57,12 @@ Some cautions:
 * [SF Chronicle California case tracker](https://projects.sfchronicle.com/2020/coronavirus-map/)
 * [Reat-time tracking of pathogen evolution](https://nextstrain.org/)
 
-## Other news and information links
+# Other news and information links
 
 * [The Atlantic Covid-19 coverage](https://www.theatlantic.com/category/what-you-need-know-coronavirus/)
 * [Home testing](https://www.ninetylawn.com/at-home-coronavirus-testing/)
 
-## Updates
+# Updates
 
 Currently, plots are aligned by setting the local day 0 as the date at which a given country/locality crosses 10% of the maximum cases, deaths, etc. in a comparison.
 
@@ -341,7 +346,7 @@ latest_date <- as.Date(latest_date)
 ```
 
 
-## Reported cumulative confirmed cases for all countries
+# Reported cumulative confirmed cases for all countries
 
 ```{r all-countries, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -368,7 +373,7 @@ by_country %>%
 
 
 
-## Confirmed cases and deaths by US state
+# Confirmed cases and deaths by US state
 
 Cumulative number of confirmed cases aggregated across all regions within state.
 
@@ -403,7 +408,7 @@ states_map %>%
 
 ```
 
-## Current status of most affected states
+# Current status of most affected states
 
 Aggregated cumulative data for 10 states with highest number of reported cumulative cases or deaths.
 
@@ -437,7 +442,7 @@ us_states_current %>%
 
 ```
 
-## Comparison of US to selected other countries
+# Comparison of US to selected other countries
 
 "Day of pandemic" is an adjustment to allow for different local pandemic start dates 
 
@@ -532,7 +537,7 @@ by_country %>%
 
 ```
 
-## Comparison of selected US states and countries
+# Comparison of selected US states and countries
 
 
 
@@ -568,7 +573,7 @@ by_country_state %>%
   ggtitle(paste("Deaths as of", latest_date))
 ```
 
-## Number of tests administered (from `covidtracking.com`)
+# Number of tests administered (from `covidtracking.com`)
 
 ```{r state-testing-rates, echo=FALSE, warning=FALSE, message=FALSE}
 states <- c("California", "New York", "Washington")
@@ -584,7 +589,7 @@ covid_datasets$`states/daily` %>%
 
 ```
 
-## Estimating maximum rate of exponential growth in number of observed cases
+# Estimating maximum rate of exponential growth in number of observed cases
 
 The dates bounding the exponential phase of growth were estimated by eye, and the curve fit applied to this range.
 
