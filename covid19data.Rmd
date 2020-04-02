@@ -491,7 +491,6 @@ by_country %>%
   mutate("day" = date - min(date),
          "lag_date" = date - lag_day[country]) %>%
   ungroup() %>%
-  ungroup() %>%
   mutate("lag_date" = lag_date - min(lag_date)) %>%
   ggplot(aes(x=lag_date, y=deaths, group=country)) +
   geom_point(aes(color=country)) +
@@ -618,6 +617,19 @@ states_map %>%
   ggtitle(paste("Statewide deaths as of", latest_date))
 
 ```
+
+```{r by-county, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+complete %>%
+  filter(country=="US", state=="California", !is.na(Admin2)) %>%
+  group_by(Admin2) %>%
+ggplot(aes(date, deaths, group=Admin2)) +
+  geom_line(aes(color=Admin2)) +
+  geom_text(aes(label = Admin2, color = Admin2, x = date, y = deaths), hjust = -.5) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
 
 ```
 
