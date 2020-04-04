@@ -619,18 +619,34 @@ states_map %>%
 
 ```
 
-```{r by-county, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+# States by county
 
-complete %>%
-  filter(country=="US", state=="California", !is.na(Admin2)) %>%
-  group_by(Admin2) %>%
-ggplot(aes(date, deaths, group=Admin2)) +
-  geom_line(aes(color=Admin2)) +
-  geom_text(aes(label = Admin2, color = Admin2, x = date, y = deaths), hjust = -.5) +
-  theme_minimal() +
-  theme(legend.position = "none")
+```{r by-county, echo=FALSE, warning=FALSE, message=FALSE}
 
+plot_counties <- function(plot_country, plot_state, parameter, topn=3) {
+  complete %>%
+    filter(country==plot_country, state==plot_state, !is.na(Admin2)) %>%
+    group_by(Admin2) %>%
+  { ggplot(.) +
+    geom_line(aes(x=date, y=(!!parameter), color=Admin2)) +
+    geom_text(data = . %>%
+                filter(date == max(date)) %>%
+                ungroup() %>%
+                top_n(topn, (!! parameter)),
+              aes(label = Admin2, color = Admin2, x = date, y = (!! parameter)),
+              hjust = "right",
+              vjust = "bottom") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      ggtitle(paste0(plot_state, " ", quo_name(parameter), " by county"))
+    }
+}
 
+plot_counties("US", "Michigan", quo(deaths))
+plot_counties("US", "Michigan", quo(confirmed))
+
+plot_counties("US", "California", quo(deaths))
+plot_counties("US", "California", quo(confirmed))
 
 ```
 
