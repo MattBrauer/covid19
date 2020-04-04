@@ -377,34 +377,49 @@ by_country %>%
 
 Cumulative number of confirmed cases aggregated across all regions within state.
 
-```{r map-plot, echo=FALSE, warning=FALSE, message=FALSE}
-states_map %>%
-  left_join(
-    us_states_current %>%
-    mutate(fips = state_abbreviations[state],
-          region = tolower(state)) %>%
-    filter(!is.na(region)) %>%
-    select(region, confirmed)
-  ) %>%
-  ggplot(aes(long, lat, group = group)) +
-  geom_polygon(aes(fill = confirmed), color = "white") +
-  scale_fill_viridis_c(option = "C") +
-  coord_fixed(1.3) +
-  ggtitle(paste("Confirmed cases as of", latest_date))
+```{r state-map-plot, echo=FALSE, warning=FALSE, message=FALSE}
 
-states_map %>%
-  left_join(
-    us_states_current %>%
-    mutate(fips = state_abbreviations[state],
-          region = tolower(state)) %>%
-    filter(!is.na(region)) %>%
-    select(region, deaths)
-  ) %>%
-  ggplot(aes(long, lat, group = group)) +
-  geom_polygon(aes(fill = deaths), color = "white") +
-  scale_fill_viridis_c(option = "C") +
-  coord_fixed(1.3) +
-  ggtitle(paste("Statewide deaths as of", latest_date))
+state_map <- function(variable) {
+  states_map %>%
+    left_join(
+      us_states_current %>%
+        mutate(fips = state_abbreviations[state],
+               region = tolower(state)) %>%
+        filter(!is.na(region)) %>%
+        select(region, !! variable)
+      ) %>%
+    ggplot(aes(long, lat, group = group)) +
+    geom_polygon(aes(fill = (!! variable)), color = "white") +
+    scale_fill_viridis_c(option = "C") +
+    coord_fixed(1.3) +
+    ggtitle(paste(quo_name(variable), "as of", latest_date))
+}
+
+state_map(quo(deaths))
+state_map(quo(confirmed))
+
+```
+
+```{r county-map-plot, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+county_map <- function(state, variable) {
+  states_map %>%
+    left_join(
+      us_states_current %>%
+        mutate(fips = state_abbreviations[state],
+               region = tolower(state)) %>%
+        filter(!is.na(region)) %>%
+        select(region, !! variable)
+      ) %>%
+    ggplot(aes(long, lat, group = group)) +
+    geom_polygon(aes(fill = (!! variable)), color = "white") +
+    scale_fill_viridis_c(option = "C") +
+    coord_fixed(1.3) +
+    ggtitle(paste(quo_name(variable), "as of", latest_date))
+}
+
+state_map(quo(deaths))
+state_map(quo(confirmed))
 
 ```
 
@@ -538,8 +553,6 @@ by_country %>%
 
 # Comparison of selected US states and countries
 
-
-
 ```{r country-state-plot, echo=FALSE, warning=FALSE, message=FALSE}
 countries <- c("Italy", "California", "New York", "Washington")
 
@@ -623,22 +636,22 @@ states_map %>%
 
 ```{r by-county, echo=FALSE, warning=FALSE, message=FALSE}
 
-plot_counties <- function(plot_country, plot_state, parameter, topn=3) {
+plot_counties <- function(plot_country, plot_state, variable, topn=3) {
   complete %>%
     filter(country==plot_country, state==plot_state, !is.na(Admin2)) %>%
     group_by(Admin2) %>%
   { ggplot(.) +
-    geom_line(aes(x=date, y=(!!parameter), color=Admin2)) +
+    geom_line(aes(x=date, y=(!!variable), color=Admin2)) +
     geom_text(data = . %>%
                 filter(date == max(date)) %>%
                 ungroup() %>%
-                top_n(topn, (!! parameter)),
-              aes(label = Admin2, color = Admin2, x = date, y = (!! parameter)),
+                top_n(topn, (!! variable)),
+              aes(label = Admin2, color = Admin2, x = date, y = (!! variable)),
               hjust = "right",
               vjust = "bottom") +
       theme_minimal() +
       theme(legend.position = "none") +
-      ggtitle(paste0(plot_state, " ", quo_name(parameter), " by county"))
+      ggtitle(paste0(plot_state, " ", quo_name(variable), " by county"))
     }
 }
 
