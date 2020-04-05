@@ -58,7 +58,9 @@ Some cautions:
 * [Our World in Data](https://ourworldindata.org/coronavirus)
 * [JHU news releases](https://releases.jhu.edu/)
 * [SF Chronicle California case tracker](https://projects.sfchronicle.com/2020/coronavirus-map/)
-* [Reat-time tracking of pathogen evolution](https://nextstrain.org/)
+* [Real-time tracking of pathogen evolution](https://nextstrain.org/)
+* [91-divoc](https://91-divoc.com)
+* [COVID-19 health data](covid19.healthdata.com)
 
 # Other news and information links
 
