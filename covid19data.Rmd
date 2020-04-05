@@ -452,12 +452,18 @@ county_map <- function(state_to_map, variable) {
 
 p1 <- county_map("California", quo(cases))
 p2 <- county_map("California", quo(deaths))
+<<<<<<< HEAD
 
 grid.arrange(p1, p2, nrow = 1)
 
 
 ```
 
+=======
+
+grid.arrange(p1, p2, nrow = 1)
+
+>>>>>>> 0c00536c28e3afc43755db64debd0098a64102e0
 
 ```{r counties-barplot, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -480,6 +486,7 @@ p1 <- counties_current_barplot("California", quo(cases))
 p2 <- counties_current_barplot("California", quo(deaths))
 
 grid.arrange(p1, p2, nrow = 1)
+
 ```
 
 # Comparison of US to selected other countries
