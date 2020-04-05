@@ -48,7 +48,7 @@ Some cautions:
 * Reported numbers are absolute cumulative, not rates. They have not been scaled to population size.
 * Dates are dates reported, not necessarily date of observation.
 
-# Other (more sophisticated and useful) tracking resources
+# Some (more sophisticated and useful) tracking resources
 
 * [UW Virology COVID-19 Dashboard](http://depts.washington.edu/labmed/covid19/)
 * [Kinsa US Health Weather Map](https://healthweather.us/): real-time tracking of atypical fever frequencies
@@ -65,11 +65,15 @@ Some cautions:
 * [The Atlantic Covid-19 coverage](https://www.theatlantic.com/category/what-you-need-know-coronavirus/)
 * [Home testing](https://www.ninetylawn.com/at-home-coronavirus-testing/)
 
-# Updates
+# Updates and notes
+
+JHU appears to update their data daily at around 4pm PDT. I usually re-run the script sometime after that. At other times I'm fiddling with changing layouts and refactoring code, and updates usually reflect that.
 
 Currently, plots are aligned by setting the local day 0 as the date at which a given country/locality crosses 10% of the maximum cases, deaths, etc. in a comparison.
 
 To do: automate the estimation of maximum exponential parameter for various curves. Currently this is done by manually setting a date range over which the fit is done.
+
+I'll be happy to take requests for specific plots. Feel free to open an issue on the [project GitHub page](https://github.com/MattBrauer/covid19). Also, take, use and propagate any code or data you find there if you find it useful.
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 # refresh data
@@ -365,137 +369,9 @@ by_country %>%
 
 ```
 
-
-
-# Confirmed cases and deaths by US state
-
-Cumulative number of confirmed cases aggregated across all regions within state.
-
-```{r state-map-plot, fig.wide = TRUE, fig.cap = "Cases and deaths by state.", echo=FALSE, warning=FALSE, message=FALSE}
-
-state_map <- function(variable) {
-  states_map %>%
-    left_join(
-      us_states_current %>%
-        mutate(fips = state_abbreviations[state],
-               region = tolower(state)) %>%
-        filter(!is.na(region)) %>%
-        select(region, !! variable)
-      ) %>%
-    ggplot(aes(long, lat, group = group)) +
-    geom_polygon(aes(fill = (!! variable)), color = "white") +
-    scale_fill_viridis_c(option = "C") +
-    coord_fixed(1.3) +
-    theme_void() +
-    ggtitle(paste(quo_name(variable), "as of", latest_date))
-}
-
-p1 <- state_map(quo(cases))
-p2 <- state_map(quo(deaths))
-
-grid.arrange(p1, p2, nrow = 1)
-
-```
-
-
-
-```{r states-barplot, fig.wide = TRUE, fig.cap = "Cases and deaths by state. Ten most affected states shown.", echo=FALSE, warning=FALSE, message=FALSE}
-
-states_current_barplot <- function(variable) {
-  us_states_current %>%
-    arrange(desc(!!variable)) %>%
-    ungroup() %>%
-    top_n(10, !!variable) %>%
-    ggplot(aes(x=reorder(state, !!variable), y=!!variable)) +
-    geom_bar(stat="identity", fill="steelblue") +
-    theme_minimal() +
-    coord_flip() +
-    xlab("state") +
-    ylab("cumulative count") +
-    ggtitle(paste(quo_name(variable), " as of", latest_date))
-}
-
-p1 <- states_current_barplot(quo(cases))
-p2 <- states_current_barplot(quo(deaths))
-
-grid.arrange(p1, p2, nrow = 1)
-
-```
-
-
-# Confirmed cases and deaths by California county
-
-Cumulative number of confirmed cases aggregated across all regions within state.
-
-```{r county-map-plot, echo=FALSE, warning=FALSE, message=FALSE}
-
-county_map <- function(state_to_map, variable) {
-  counties_map %>%
-    filter(region==tolower(state_to_map)) %>%
-    dplyr::select(-region) %>%
-    left_join(
-      us_counties_current %>%
-        filter(state==state_to_map) %>%
-        dplyr::select(-state) %>%
-        mutate(subregion = tolower(county)) %>%
-        filter(!is.na(subregion)) %>%
-        select(subregion, !! variable)
-      ) %>%
-    select(-subregion, -state) %>%
-    ggplot(aes(long, lat, group = group)) +
-    geom_polygon(aes(fill = (!! variable)), color = NA) +
-    scale_fill_viridis_c(option = "C") +
-    coord_fixed(1.3) +
-    theme_void() +
-    ggtitle(paste(state_to_map, quo_name(variable), "as of", latest_date))
-}
-
-p1 <- county_map("California", quo(cases))
-p2 <- county_map("California", quo(deaths))
-<<<<<<< HEAD
-
-grid.arrange(p1, p2, nrow = 1)
-
-
-```
-
-=======
-
-grid.arrange(p1, p2, nrow = 1)
-
->>>>>>> 0c00536c28e3afc43755db64debd0098a64102e0
-
-```{r counties-barplot, echo=FALSE, warning=FALSE, message=FALSE}
-
-counties_current_barplot <- function(state_plot, variable) {
-  us_counties_current %>%
-    filter(state==state_plot) %>%
-    arrange(desc(!!variable)) %>%
-    ungroup() %>%
-    top_n(10, !!variable) %>%
-    ggplot(aes(x=reorder(county, !!variable), y=!!variable)) +
-    geom_bar(stat="identity", fill="steelblue") +
-    theme_minimal() +
-    coord_flip() +
-    xlab("county") +
-    ylab(quo_name(variable)) +
-    ggtitle(paste(state_plot, quo_name(variable), "by county, as of", latest_date))
-}
-
-p1 <- counties_current_barplot("California", quo(cases))
-p2 <- counties_current_barplot("California", quo(deaths))
-
-grid.arrange(p1, p2, nrow = 1)
-
-```
-
 # Comparison of US to selected other countries
 
-"Day of pandemic" is an adjustment to allow for different local pandemic start dates 
-
-Vs. Italy, Spain and China.
-
-```{r us-italy-china-spain-plot, echo=FALSE, warning=FALSE, message=FALSE}
+```{r country-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
 lag_days <- function(dataset, countries) {
  first_deciles <- dataset %>%
   ungroup() %>%
@@ -511,77 +387,198 @@ lag_days <- function(dataset, countries) {
               deaths = max(date[deaths < (first_deciles %>% dplyr::pull(deaths))], na.rm=TRUE),
               recovered = max(date[recovered < (first_deciles %>% dplyr::pull(recovered))], na.rm=TRUE))
 
+}
+
+country_timeplot <- function(countries, variable, topn = 10) {
+  lag_day <- lag_days(by_country, countries) %>%
+    select(country, (!!variable)) %>%
+    deframe()
+  by_country %>%
+    filter(country %in% countries) %>%
+    mutate("day" = date - min(date),
+           "lag_date" = date - lag_day[country]) %>%
+    ungroup() %>%
+    mutate("lag_date" = lag_date - min(lag_date)) %>%
+    group_by(country) %>%
+  { ggplot(.) +
+    geom_line(aes(x=lag_date, y=!!variable, color=country)) +
+    geom_point(aes(x=lag_date, y=!!variable, color=country)) +
+    geom_text(data = . %>%
+                filter(lag_date == max(lag_date)) %>%
+                ungroup() %>%
+                top_n(topn, (!! variable)),
+              aes(label = country, color = country, x = lag_date, y = (!! variable)),
+              hjust = "right",
+              vjust = "bottom") +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    xlab("Day of pandemic") +
+    ylab(quo_name(variable)) +
+    ggtitle(paste0(quo_name(variable), " by country as of ", latest_date))
   }
+}
+```
+
+
+```{r us-italy-china-spain-plot, fig.wide = TRUE, fig.cap = "Pandemic trajectories of several countries. Day of pandemic is an adjustment to allow for different local pandemic start dates." , echo=FALSE, warning=FALSE, message=FALSE}
 
 countries <- c("China", "Italy", "Spain", "US")
-
-lag_day <- lag_days(by_country, countries) %>% select(country, cases) %>% deframe()
-
-by_country %>%
-  filter(country %in% countries) %>%
-  mutate("day" = date - min(date),
-         "lag_date" = date - lag_day[country]) %>%
-  ungroup() %>%
-  mutate("lag_date" = lag_date - min(lag_date)) %>%
-  ggplot(aes(x=lag_date, y=cases, group=country)) +
-  geom_point(aes(color=country)) +
-  geom_line(aes(color=country)) +
-  geom_bar(aes(y=deaths, fill=country), stat="identity") +
-  xlab("Day of pandemic") +
-  ylab("Confirmed cases") +
-  xlim(0, NA) +
-  ggtitle(paste("Confirmed cases as of", latest_date))
-
-lag_day <- lag_days(by_country, countries) %>% select(country, deaths) %>% deframe()
-
-by_country %>%
-  filter(country %in% countries) %>%
-  mutate("day" = date - min(date),
-         "lag_date" = date - lag_day[country]) %>%
-  ungroup() %>%
-  mutate("lag_date" = lag_date - min(lag_date)) %>%
-  ggplot(aes(x=lag_date, y=deaths, group=country)) +
-  geom_point(aes(color=country)) +
-  geom_line(aes(color=country)) +
-  xlab("Day of pandemic") +
-  ylab("Deaths") +
-  xlim(-8, NA) +
-  ggtitle(paste("Deaths as of", latest_date))
-
+p1 <- country_timeplot(countries, quo(cases))
+p2 <- country_timeplot(countries, quo(deaths))
+grid.arrange(p1, p2, nrow = 1)
 ```
 
-Focus on Italy.
-
-```{r us-italy-plot, echo=FALSE, warning=FALSE, message=FALSE}
+```{r us-italy-plot, fig.wide = TRUE, fig.cap = "Comparing US to Italy. Day of pandemic is an adjustment to allow for different local pandemic start dates.", echo=FALSE, warning=FALSE, message=FALSE}
 
 countries <- c("Italy", "US")
-lag_day <- lag_days(by_country, countries) %>% select(country, cases) %>% deframe()
-
-by_country %>%
-  filter(country %in% countries) %>%
-  mutate("day" = date - min(date),
-         "lag_date" = date - lag_day[country]) %>%
-  ggplot(aes(x=lag_date, y=cases, group=country)) +
-  geom_point(aes(color=country)) +
-  geom_line(aes(color=country)) +
-  xlab("Day of pandemic") +
-  ylab("Confirmed cases") +
-  ggtitle(paste("Confirmed cases as of", latest_date))
-
-lag_day <- lag_days(by_country, countries) %>% select(country, deaths) %>% deframe()
-
-by_country %>%
-  filter(country %in% countries) %>%
-  mutate("day" = date - min(date),
-         "lag_date" = date - lag_day[country]) %>%
-  ggplot(aes(x=lag_date, y=deaths, group=country)) +
-  geom_point(aes(color=country)) +
-  geom_line(aes(color=country)) +
-  xlab("Day of pandemic") +
-  ylab("Deaths") +
-  ggtitle(paste("Deaths as of", latest_date))
+p1 <- country_timeplot(countries, quo(cases))
+p2 <- country_timeplot(countries, quo(deaths))
+grid.arrange(p1, p2, nrow = 1)
 
 ```
+
+# Confirmed cases and deaths by US state
+
+Cumulative number of confirmed cases aggregated across all regions within state.
+
+```{r us-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
+state_map <- function(variable) {
+  log_breaks <- 2 * 5**seq(0,8)
+  states_map %>%
+    left_join(
+      us_states_current %>%
+        mutate(fips = state_abbreviations[state],
+               region = tolower(state)) %>%
+        filter(!is.na(region)) %>%
+        select(region, !! variable)
+      ) %>%
+    ggplot(aes(long, lat, group = group)) +
+    geom_polygon(aes(fill = (!! variable)), color = "white") +
+    scale_fill_viridis_c(option = "C",
+                         name = quo_name(variable),
+                         trans = "log",
+                         breaks = log_breaks, labels = log_breaks) +
+    coord_fixed(1.3) +
+    theme_void() +
+    ggtitle(paste(quo_name(variable), "as of", latest_date))
+}
+
+states_current_barplot <- function(variable) {
+  us_states_current %>%
+    arrange(desc(!!variable)) %>%
+    ungroup() %>%
+    top_n(10, !!variable) %>%
+    ggplot(aes(x=reorder(state, !!variable), y=!!variable)) +
+    geom_bar(stat="identity", fill="steelblue") +
+    theme_minimal() +
+    coord_flip() +
+    xlab("state") +
+    ylab("cumulative count") +
+    ggtitle(paste(quo_name(variable), " as of", latest_date))
+}
+```
+
+
+```{r state-map-plot, fig.wide = TRUE, fig.cap = "Cases and deaths by state.", echo=FALSE, warning=FALSE, message=FALSE}
+
+p1 <- state_map(quo(cases))
+p2 <- state_map(quo(deaths))
+
+grid.arrange(p1, p2, nrow = 1)
+
+```
+
+
+```{r states-barplot, fig.wide = TRUE, fig.cap = "Cases and deaths by state. Ten most affected states shown.", echo=FALSE, warning=FALSE, message=FALSE}
+
+p1 <- states_current_barplot(quo(cases))
+p2 <- states_current_barplot(quo(deaths))
+
+grid.arrange(p1, p2, nrow = 1)
+
+```
+
+
+```{r state-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
+
+county_map <- function(state_to_map, variable) {
+  log_breaks <- 2 * 5**seq(0,8)
+  counties_map %>%
+    filter(region==tolower(state_to_map)) %>%
+    dplyr::select(-region) %>%
+    left_join(
+      us_counties_current %>%
+        filter(state==state_to_map) %>%
+        dplyr::select(-state) %>%
+        mutate(subregion = tolower(county)) %>%
+        filter(!is.na(subregion)) %>%
+        select(subregion, !! variable)
+      ) %>%
+    select(-subregion, -state) %>%
+    ggplot(aes(long, lat, group = group)) +
+    geom_polygon(aes(fill = (!! variable)), color = NA) +
+    scale_fill_viridis_c(option = "C",
+                         name = quo_name(variable),
+                         trans = "log",
+                         breaks = log_breaks, labels = log_breaks) +
+    coord_fixed(1.3) +
+    theme_void() +
+    ggtitle(paste(state_to_map, quo_name(variable), "as of", latest_date))
+}
+
+county_barplot <- function(state_plot, variable) {
+  us_counties_current %>%
+    filter(state==state_plot) %>%
+    arrange(desc(!!variable)) %>%
+    ungroup() %>%
+    top_n(10, !!variable) %>%
+    ggplot(aes(x=reorder(county, !!variable), y=!!variable)) +
+    geom_bar(stat="identity", fill="steelblue") +
+    theme_minimal() +
+    coord_flip() +
+    xlab("county") +
+    ylab(quo_name(variable)) +
+    ggtitle(paste(state_plot, quo_name(variable), "by county, as of", latest_date))
+}
+
+county_timeplot <- function(plot_country, plot_state, variable, topn=3) {
+  complete %>%
+    filter(country==plot_country, state==plot_state, !is.na(county)) %>%
+    group_by(county) %>%
+  { ggplot(.) +
+    geom_line(aes(x=date, y=(!!variable), color=county)) +
+    geom_text(data = . %>%
+                filter(date == max(date)) %>%
+                ungroup() %>%
+                top_n(topn, (!! variable)),
+              aes(label = county, color = county, x = date, y = (!! variable)),
+              hjust = "right",
+              vjust = "bottom") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      ggtitle(paste0(plot_state, " ", quo_name(variable), " by county"))
+    }
+}
+
+```
+
+# Confirmed cases and deaths by California county
+
+Cumulative number of confirmed cases aggregated across all regions within state.
+
+```{r ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
+
+p1 <- county_map("California", quo(cases))
+p2 <- county_map("California", quo(deaths))
+grid.arrange(p1, p2, nrow = 1)
+p3 <- county_barplot("California", quo(cases))
+p4 <- county_barplot("California", quo(deaths))
+grid.arrange(p3, p4, nrow = 1)
+p5 <- county_timeplot("US", "California", quo(cases))
+p6 <- county_timeplot("US", "California", quo(deaths))
+grid.arrange(p5, p6, nrow = 1)
+```
+
 
 # Comparison of selected US states and countries
 
@@ -656,36 +653,6 @@ states_map %>%
 
 ```
 
-# States by county
-
-```{r by-county, echo=FALSE, warning=FALSE, message=FALSE}
-
-plot_counties <- function(plot_country, plot_state, variable, topn=3) {
-  complete %>%
-    filter(country==plot_country, state==plot_state, !is.na(county)) %>%
-    group_by(county) %>%
-  { ggplot(.) +
-    geom_line(aes(x=date, y=(!!variable), color=county)) +
-    geom_text(data = . %>%
-                filter(date == max(date)) %>%
-                ungroup() %>%
-                top_n(topn, (!! variable)),
-              aes(label = county, color = county, x = date, y = (!! variable)),
-              hjust = "right",
-              vjust = "bottom") +
-      theme_minimal() +
-      theme(legend.position = "none") +
-      ggtitle(paste0(plot_state, " ", quo_name(variable), " by county"))
-    }
-}
-
-plot_counties("US", "Michigan", quo(deaths))
-plot_counties("US", "Michigan", quo(cases))
-
-plot_counties("US", "California", quo(deaths))
-plot_counties("US", "California", quo(cases))
-
-```
 
 # Estimating maximum rate of exponential growth in number of observed cases
 
