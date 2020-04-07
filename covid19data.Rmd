@@ -663,19 +663,42 @@ The dates bounding the exponential phase of growth were estimated by eye, and th
 
 ```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
-bounds_cases <- list(country=c("China","New York","Italy","Spain",
+pick_min <- function(df) {
+  df %>%
+    ungroup() %>%
+    select(country, min) %>%
+    deframe()
+}
+
+pick_max <- function(df) {
+  df %>%
+    ungroup() %>%
+    select(country, max) %>%
+    deframe()
+}
+
+bounds <- as_tibble(list(country=c("China","New York","Italy","Spain",
                          "California","Washington", "US"),
-               min_date=as.Date(c("2020-01-22", "2020-03-08", rep("2020-03-01", 5))),
-               max_date=as.Date(c("2020-02-07", "2020-06-01",
-                                    "2020-03-22", rep("2020-06-01", 4))))
-bounds_deaths <- list(country=c("China","New York","Italy","Spain",
-                         "California","Washington", "US"),
-               min_date=as.Date(c("2020-01-22", "2020-03-13", rep("2020-03-01", 5))),
-               max_date=as.Date(c("2020-02-07", "2020-03-24", rep("2020-06-01", 5))))
+               cases_min=as.Date(c("2020-01-22", "2020-03-08", rep("2020-03-01", 5))),
+               cases_max=as.Date(c("2020-02-07", "2020-06-01",
+                                    "2020-03-22", rep("2020-06-01", 4))),
+               deaths_min=as.Date(c("2020-01-22", "2020-03-13", rep("2020-03-01", 5))),
+               deaths_max=as.Date(c("2020-02-07", "2020-03-24", rep("2020-06-01", 5))))) %>%
+  pivot_longer(-country, names_to = "bound", values_to = "date") %>%
+  separate(bound, into = c("obs", "minmax"), sep = "_") %>%
+  group_by(obs) %>%
+  nest() %>%
+  mutate(bounds = purrr::map(data, ~ pivot_wider(., names_from=minmax, values_from=date)),
+         min_date = purrr::map(bounds, ~ pick_min(.)),
+         max_date = purrr::map(bounds, ~ pick_max(.))) %>%
+  select(obs, min_date, max_date)
 
 exp_phase_fit <- function(dataset, bounds, variable) {
-  exp_start <- as.tibble(bounds) %>% select(country, min_date) %>% deframe()
-  exp_end <- as.tibble(bounds) %>% select(country, max_date) %>% deframe()
+  bounds <- bounds %>%
+    filter(obs==quo_name(variable)) %>%
+    pivot_wider(names_from = minmax, values_from = date)
+  exp_start <- bounds %>% select(country, min) %>% deframe()
+  exp_end <- bounds %>% select(country, max) %>% deframe()
   dataset %>%
   filter(country %in% bounds$country,
          date <= exp_end[country] & date >= exp_start[country]) %>%
