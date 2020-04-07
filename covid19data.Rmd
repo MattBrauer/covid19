@@ -29,6 +29,7 @@ library(gifski)
 require(usmap)
 require(git2r)
 require(httr)
+#require(tsibble)
 ```
 Latest version: `r commits(repository("."))[[1]]$message`
 
@@ -60,7 +61,7 @@ Some cautions:
 * [SF Chronicle California case tracker](https://projects.sfchronicle.com/2020/coronavirus-map/)
 * [Real-time tracking of pathogen evolution](https://nextstrain.org/)
 * [91-divoc](https://91-divoc.com)
-* [COVID-19 health data](covid19.healthdata.com)
+* [COVID-19 health data](https://covid19.healthdata.org/)
 
 # Other news and information links
 
@@ -662,40 +663,73 @@ The dates bounding the exponential phase of growth were estimated by eye, and th
 
 ```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
+bounds_cases <- list(country=c("China","New York","Italy","Spain",
+                         "California","Washington", "US"),
+               min_date=as.Date(c("2020-01-22", "2020-03-08", rep("2020-03-01", 5))),
+               max_date=as.Date(c("2020-02-07", "2020-06-01",
+                                    "2020-03-22", rep("2020-06-01", 4))))
+bounds_deaths <- list(country=c("China","New York","Italy","Spain",
+                         "California","Washington", "US"),
+               min_date=as.Date(c("2020-01-22", "2020-03-13", rep("2020-03-01", 5))),
+               max_date=as.Date(c("2020-02-07", "2020-03-24", rep("2020-06-01", 5))))
 
-exp_phase_countries <- c("China","New York","Italy","Spain","California","Washington", "US")
-exp_start <- as.Date(c("2020-01-22", "2020-03-08", rep("2020-03-01", 5)))
-exp_end <- as.Date(c("2020-02-07", "2020-06-01", "2020-03-22", rep("2020-06-01", 5)))
-
-exp_start_deaths <- as.Date(c("2020-01-22", "2020-03-13", rep("2020-03-01", 5)))
-exp_end_deaths <- as.Date(c("2020-02-07", "2020-03-24", rep("2020-06-01", 5)))
-
-names(exp_start) <- names(exp_start_deaths) <- exp_phase_countries
-names(exp_end) <- names(exp_end_deaths) <- exp_phase_countries
-
-exp_phase_fit <- by_country_state %>%
-  filter(country %in% exp_phase_countries,
+exp_phase_fit <- function(dataset, bounds, variable) {
+  exp_start <- as.tibble(bounds) %>% select(country, min_date) %>% deframe()
+  exp_end <- as.tibble(bounds) %>% select(country, max_date) %>% deframe()
+  dataset %>%
+  filter(country %in% bounds$country,
          date <= exp_end[country] & date >= exp_start[country]) %>%
   mutate("day" = date - exp_start[country]) %>%
   group_by(country) %>%
   do(fit = lm(log(cases + 1) ~ day, data=.))
+}
 
-exp_phase_fit_deaths <- by_country_state %>%
-  filter(country %in% exp_phase_countries,
-         date <= exp_end_deaths[country] & date >= exp_start_deaths[country]) %>%
-  mutate("day" = date - exp_start_deaths[country]) %>%
-  group_by(country) %>%
-  do(fit = lm(log(deaths + 1) ~ day, data=.))
+exp_phase_fit_cases <- exp_phase_fit(by_country_state, bounds_cases, quo(cases))
+exp_phase_fit_deaths <- exp_phase_fit(by_country_state, bounds_deaths, quo(deaths))
+
 ```
 
-```{r curve-fit-plots, echo=FALSE, warning=FALSE, message=FALSE}
+```{r curve-fit-plot-functions, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 
-countries <- c(exp_phase_countries, "US")
+countries <- bounds_cases$country
+
+country_log_timeplot <- function(dataset, countries, variable, topn = 10) {
+  lag_day <- lag_days(dataset, countries) %>%
+    select(country, (!!variable)) %>%
+    deframe()
+  dataset %>%
+    filter(country %in% countries) %>%
+    mutate("day" = date - min(date),
+           "lag_date" = date - lag_day[country]) %>%
+    ungroup() %>%
+    mutate("lag_date" = lag_date - min(lag_date)) %>%
+    group_by(country) %>%
+  { ggplot(.) +
+    geom_line(aes(x=lag_date, y=!!variable, color=country)) +
+    geom_point(aes(x=lag_date, y=!!variable, color=country)) +
+    geom_text(data = . %>%
+                filter(lag_date == max(lag_date)) %>%
+                ungroup() %>%
+                top_n(topn, (!! variable)),
+              aes(label = country, color = country, x = lag_date, y = (!! variable)),
+              hjust = "right",
+              vjust = "bottom") +
+    scale_y_log10() +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    xlab("Day of pandemic") +
+    ylab(quo_name(variable)) +
+    ggtitle(paste0(quo_name(variable), " by country as of ", latest_date))
+  }
+}
+
+p1 <- country_log_timeplot(by_country_state, countries, quo(deaths), topn=10)
+
 
 lag_day <- lag_days(by_country_state, countries) %>% select(country, cases) %>% deframe()
 
 by_country_state %>%
-  filter(country %in% c(exp_phase_countries, "US")) %>%
+  filter(country %in% countries) %>%
   mutate("day" = date - lag_day[country], "log_confirmed" = log(cases + 1)) %>%
   ggplot(aes(x=date, y=log_confirmed), color=country) +
   geom_line(aes(color=country)) +
@@ -703,7 +737,7 @@ by_country_state %>%
   ylab("Log(confirmed cases)") +
   ggtitle(paste("Confirmed cases as of", latest_date))
 
-exp_phase_fit %>%
+exp_phase_fit_cases %>%
   augment(fit) %>%
   rename("log_confirmed" = `log.cases...1.`) %>%
   ggplot(aes(x=day, y=log_confirmed), color=country) +
@@ -716,7 +750,7 @@ exp_phase_fit %>%
 lag_day <- lag_days(by_country_state, countries) %>% select(country, deaths) %>% deframe()
 
 by_country_state %>%
-  filter(country %in% c(exp_phase_countries, "US")) %>%
+  filter(country %in% countries) %>%
   mutate("day" = date - lag_day[country], "log_deaths" = log(deaths + 1)) %>%
   ggplot(aes(x=date, y=log_deaths), color=country) +
   geom_line(aes(color=country)) +
@@ -736,7 +770,7 @@ exp_phase_fit_deaths %>%
 
 ```
 
-```{r exp-fit-tables, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
+```{r exp-fit-tables, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
 
 exp_phase_tabular <- exp_phase_fit %>%
   tidy(fit) %>%
