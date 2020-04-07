@@ -79,9 +79,8 @@ To do: automate the estimation of maximum exponential parameter for various curv
 I'll be happy to take requests for specific plots. Feel free to open an issue on the [project GitHub page](https://github.com/MattBrauer/covid19). Also, take, use and propagate any code or data you find there if you find it useful.
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-# refresh data
-#git pull --recurse-submodules
-#git submodule update --remote --recursive
+# refresh data from JHU github repo
+git submodule update --remote --recursive
 ```
 
 ```{r covidtracking-data-load, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
