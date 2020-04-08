@@ -79,7 +79,7 @@ To do: automate the estimation of maximum exponential parameter for various curv
 I'll be happy to take requests for specific plots. Feel free to open an issue on the [project GitHub page](https://github.com/MattBrauer/covid19). Also, take, use and propagate any code or data you find there if you find it useful.
 
 ```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-# refresh data from JHU github repo
+# refresh data from JHU and NY Times github repos
 git submodule update --remote --recursive
 ```
 
@@ -139,6 +139,12 @@ state_names <- c("Alabama", "Alaska", "Arizona", "Kansas",
                 "Wisconsin", "Wyoming", "District of Columbia")
 names(state_names) <- state_abbreviations
 names(state_abbreviations) <- state_names
+```
+
+```{r nytimes-load, echo=FALSE, warning=FALSE, message=FALSE}
+nyt_counties <- read_csv("covid-19-data/us-counties.csv")
+nyt_states <- read_csv("covid-19-data/us-states.csv")
+
 ```
 
 ```{r csse-new-data-model-load, echo=FALSE, warning=FALSE, message=FALSE}
@@ -344,7 +350,9 @@ by_country %>%
     xlab("Day of pandemic") +
     ylab("Confirmed cases") +
     scale_y_log10() +
+    theme_minimal() +  
     theme(legend.position = "none") +
+    xlim(0, max(.$day) + 10) +
     ggtitle(paste("Confirmed cases as of", latest_date))
   }
 ```
@@ -440,6 +448,30 @@ grid.arrange(p1, p2, nrow = 1)
 ```
 
 # Confirmed cases and deaths by US state
+
+
+```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between countries. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
+
+us_states %>%
+  filter(cases >= 100) %>%
+  group_by(state) %>%
+  mutate(day = date - min(date), maxday = max(day)) %>%
+  {
+    ggplot(., aes(x=day, y=cases, group=state)) +
+    geom_line(aes(color=state)) +
+    geom_text(data = subset(., day == maxday), aes(label = state,
+                                                     colour = state,
+                                                     x = day,
+                                                     y = cases), hjust = -.1) +
+    xlab("Day of pandemic") +
+    ylab("Confirmed cases") +
+    scale_y_log10() +
+    theme_minimal() +  
+    theme(legend.position = "none") +
+    xlim(0, max(.$day) + 10) +
+    ggtitle(paste("Confirmed cases as of", latest_date))
+  }
+```
 
 Cumulative number of confirmed cases aggregated across all regions within state.
 
@@ -622,13 +654,21 @@ covid_datasets$`states/daily` %>%
   ylab("Test counts") +
   ggtitle("Number of tests administered and number positive")
 
+covid_datasets$`states/daily` %>%
+  filter(state %in% state_abbreviations[states]) %>%
+  mutate(positive_fraction = positive/posNeg) %>% 
+  ggplot(aes(x=date, y=positive_fraction, color=state)) +
+  geom_line() +
+  xlab("Date") +
+  ylab("Fraction of tests positive") +
+  ggtitle("Positive test results")
 ```
 
 ```{r covidtracking-maps, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 states_map %>%
   left_join(
     covid_datasets$`states/daily` %>%
-      group_by(state)
+      group_by(state) 
     mutate(state = state_names[state],
            region = tolower(state)) %>%
       filter(!is.na(region))) %>%
