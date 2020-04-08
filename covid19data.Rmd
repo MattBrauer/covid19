@@ -660,7 +660,7 @@ states_map %>%
 
 The dates bounding the exponential phase of growth were estimated by eye, and the curve fit applied to this range.
 
-```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
+```{r curve-fits, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 
 pick_min <- function(df) {
   df %>%
@@ -706,8 +706,8 @@ exp_phase_fit <- function(dataset, bounds, variable) {
   do(fit = lm(log(cases + 1) ~ day, data=.))
 }
 
-exp_phase_fit_cases <- exp_phase_fit(by_country_state, bounds_cases, quo(cases))
-exp_phase_fit_deaths <- exp_phase_fit(by_country_state, bounds_deaths, quo(deaths))
+exp_phase_fit_cases <- exp_phase_fit(by_country_state, bounds, quo(cases))
+exp_phase_fit_deaths <- exp_phase_fit(by_country_state, bounds, quo(deaths))
 
 ```
 
