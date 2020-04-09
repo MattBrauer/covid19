@@ -29,7 +29,7 @@ library(gifski)
 require(usmap)
 require(git2r)
 require(httr)
-#require(tsibble)
+require(tsibble)
 ```
 Latest version: `r commits(repository("."))[[1]]$message`
 
@@ -78,10 +78,66 @@ To do: automate the estimation of maximum exponential parameter for various curv
 
 I'll be happy to take requests for specific plots. Feel free to open an issue on the [project GitHub page](https://github.com/MattBrauer/covid19). Also, take, use and propagate any code or data you find there if you find it useful.
 
-```{bash git-pull, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-# refresh data from JHU and NY Times github repos
+```{bash git-pull, echo=FALSE, warning=FALSE, message=FALSE}
+## refresh data from JHU, NY Times and OWID github repos
 git submodule update --remote --recursive
 ```
+
+```{r data-sources, echo=FALSE, warning=FALSE, message=FALSE}
+csse_data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
+nytimes_data_dir <- "covid-19-data"
+owid_data_dir <- "owid-datasets/datasets"
+```
+
+```{r build_owid-data, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+## overkill: gets all of the owid data
+
+owid_data_dirs <- dir_ls(owid_data_dir) #, glob="*.csv")
+owid_covid_tests_file <- dir_ls(file.path(owid_data_dir, "COVID-19 Tests"), glob="*.csv")
+owid_csv_data <- as_tibble(list(directory = dir_ls(owid_data_dir))) %>%
+  mutate(filename = dir_ls(directory, glob="*.csv"),
+         data = purrr::map(filename, read_csv))
+
+owid_population_data <- owid_csv_data %>%
+  filter(grepl("Population by country", filename), grepl("(Gapminder & UN)", filename)) %>%
+  unnest() %>%
+  dplyr::select(-directory, -filename)
+
+owid_population_data %>%
+  filter(Year==2019) %>%
+  dplyr::select(1,4) %>%
+  rename(pop = `Population by country, 1800 to 2015 (Gapminder & UN)`,
+         country = Entity) %>%
+  write_csv("demographic_data/owid_global_population_2019")
+```
+
+```{r demographic-data, echo=FALSE, warning=FALSE, message=FALSE}
+global <- read_csv("demographic_data/owid_global_population_2019")
+
+us_metro_pop <- read_csv("demographic_data/cbsa-est2019-alldata.csv") %>%
+  select(CBSA, MDIV, STCOU, NAME, LSAD, POPESTIMATE2019) %>%
+  rename(pop = POPESTIMATE2019)
+
+us_county_pop <- read_csv("demographic_data/co-est2019-alldata.csv") %>%
+  dplyr::select(1:7, 19) %>%
+  rename(pop = POPESTIMATE2019) %>%
+  mutate(county = gsub(" County", "", CTYNAME))
+
+us_state_pop <- read_csv("demographic_data/nst-est2019-alldata.csv") %>%
+  dplyr::select(1:5, 17) %>%
+  rename(pop = POPESTIMATE2019)
+
+## get state-level data
+# us_county_pop %>%
+#   filter(COUNTY == "000", STNAME == "Alabama")
+
+## get county-level data
+# us_county_pop %>%
+#   filter(COUNTY != "000", STNAME == "Alabama")
+
+
+```
+
 
 ```{r covidtracking-data-load, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -142,9 +198,8 @@ names(state_abbreviations) <- state_names
 ```
 
 ```{r nytimes-load, echo=FALSE, warning=FALSE, message=FALSE}
-nyt_counties <- read_csv("covid-19-data/us-counties.csv")
-nyt_states <- read_csv("covid-19-data/us-states.csv")
-
+nyt_counties <- read_csv(paste0(nytimes_data_dir, "/us-counties.csv"))
+nyt_states <- read_csv(paste0(nytimes_data_dir, "/us-states.csv"))
 ```
 
 ```{r csse-new-data-model-load, echo=FALSE, warning=FALSE, message=FALSE}
@@ -152,17 +207,15 @@ nyt_states <- read_csv("covid-19-data/us-states.csv")
 # daily reports data. follows different data models at different times, so a fair bit
 #  of tweeking is necessary
 
-data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
-
 data_model_start_dates <- as.Date(c("01-22-2020", "03-22-2020"), "%m-%d-%Y")
 
 data_models <- Vectorize(function(obs_date, start_dates) {
   end_dates <- lead(c(start_dates,today() + days(1))-days(1))[1:length(start_dates)]
-  intervals <- interval(start = start_dates, end = end_dates)
+  intervals <- lubridate::interval(start = start_dates, end = end_dates)
   which(obs_date %within% intervals)
 }, "obs_date")
 
-report_files <- dir_ls(data_dir, glob="*.csv")
+report_files <- dir_ls(csse_data_dir, glob="*.csv")
 report_dates <- as.Date(path_ext_remove(path_file(report_files)), "%m-%d-%Y")
 report_models <- data_models(report_dates, data_model_start_dates)
 report_sets <- as_tibble(list(file = report_files,
@@ -476,11 +529,11 @@ us_states %>%
 Cumulative number of confirmed cases aggregated across all regions within state.
 
 ```{r us-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
-state_map <- function(variable) {
+state_map <- function(dataset, variable) {
   log_breaks <- 2 * 5**seq(0,8)
   states_map %>%
     left_join(
-      us_states_current %>%
+      dataset %>%
         mutate(fips = state_abbreviations[state],
                region = tolower(state)) %>%
         filter(!is.na(region)) %>%
@@ -497,8 +550,8 @@ state_map <- function(variable) {
     ggtitle(paste(quo_name(variable), "as of", latest_date))
 }
 
-states_current_barplot <- function(variable) {
-  us_states_current %>%
+states_current_barplot <- function(dataset, variable) {
+  dataset %>%
     arrange(desc(!!variable)) %>%
     ungroup() %>%
     top_n(10, !!variable) %>%
@@ -515,8 +568,8 @@ states_current_barplot <- function(variable) {
 
 ```{r state-map-plot, fig.wide = TRUE, fig.cap = "Cases and deaths by state.", echo=FALSE, warning=FALSE, message=FALSE}
 
-p1 <- state_map(quo(cases))
-p2 <- state_map(quo(deaths))
+p1 <- us_states_current %>% state_map(quo(cases))
+p2 <- us_states_current %>% state_map(quo(deaths))
 
 grid.arrange(p1, p2, nrow = 1)
 
@@ -525,11 +578,38 @@ grid.arrange(p1, p2, nrow = 1)
 
 ```{r states-barplot, fig.wide = TRUE, fig.cap = "Cases and deaths by state. Ten most affected states shown.", echo=FALSE, warning=FALSE, message=FALSE}
 
-p1 <- states_current_barplot(quo(cases))
-p2 <- states_current_barplot(quo(deaths))
+p1 <- states_current_barplot(us_states_current, quo(cases))
+p2 <- states_current_barplot(us_states_current, quo(deaths))
 
 grid.arrange(p1, p2, nrow = 1)
 
+```
+
+```{r states-per-capita, echo=FALSE, warning=FALSE, message=FALSE}
+
+us_states_per_capita <- us_states_current %>%
+  left_join(us_county_pop %>% filter(COUNTY == "000"), by = c("state" = "STNAME")) %>%
+  filter(!is.na(pop)) %>%
+  dplyr::select(state, pop, date, cases, recovered, deaths) %>%
+  mutate_at(c("cases", "recovered", "deaths"), ~ (. * 1e6)/pop)
+```
+
+
+```{r states-per-capita-map-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million inhabitants, by state.", echo=FALSE, warning=FALSE, message=FALSE}
+
+p1 <- us_states_per_capita %>% state_map(quo(cases))
+p2 <- us_states_per_capita %>% state_map(quo(deaths))
+
+grid.arrange(p1, p2, nrow = 1)
+
+```
+
+```{r states-per-capita-bar-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million inhabitants, by state. Ten most affected states shown.", echo=FALSE, warning=FALSE, message=FALSE}
+
+p1 <- us_states_per_capita %>% states_current_barplot(quo(cases))
+p2 <- us_states_per_capita %>% states_current_barplot(quo(deaths))
+
+grid.arrange(p1, p2, nrow = 1)
 ```
 
 

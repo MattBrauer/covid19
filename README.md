@@ -22,6 +22,13 @@ cd covid-19-data
 git submodule init
 git submodule update --remote
 ```
+Our World in Data (OWID):
+```
+git submodule add git@github.com:owid/owid-datasets.git
+cd owid-datasets
+git submodule init
+git submodule update --remote
+```
 
 Data updates:
 `git submodule update --remote` 
