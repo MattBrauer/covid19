@@ -587,6 +587,8 @@ p2 <- us_states_current %>% states_current_barplot(quo(deaths))
 grid.arrange(p1, p2, nrow = 1)
 
 ```
+
+
 ```{r per-capita-state-plots, fig.wide = TRUE, fig.cap = "Cases and deaths per million population by state. Barplots show 10 most affected states", echo=FALSE, warning=FALSE, message=FALSE}
 
 p1 <- us_states_current %>%
@@ -608,6 +610,7 @@ p2 <- us_states_current %>%
 grid.arrange(p1, p2, nrow = 1)
 
 ```
+
 
 
 ```{r state-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
