@@ -19,6 +19,7 @@ require(tidyverse)
 require(lubridate)
 require(fs)
 require(broom)
+require(slider)
 require(kableExtra)
 require(gridExtra)
 require(maps)
@@ -816,62 +817,138 @@ states_map %>%
 
 # Estimating maximum rate of exponential growth in number of observed cases
 
-The dates bounding the exponential phase of growth were estimated by eye, and the curve fit applied to this range.
+Expoential growth parameters were estimated for 5-day moving window over cases.
 
-```{r curve-fits, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
-pick_min <- function(df) {
-  df %>%
-    ungroup() %>%
-    select(country, min) %>%
-    deframe()
-}
-
-pick_max <- function(df) {
-  df %>%
-    ungroup() %>%
-    select(country, max) %>%
-    deframe()
-}
-
-bounds <- as_tibble(list(country=c("China","New York","Italy","Spain",
-                         "California","Washington", "US"),
-               cases_min=as.Date(c("2020-01-22", "2020-03-08", rep("2020-03-01", 5))),
-               cases_max=as.Date(c("2020-02-07", "2020-06-01",
-                                    "2020-03-22", rep("2020-06-01", 4))),
-               deaths_min=as.Date(c("2020-01-22", "2020-03-13", rep("2020-03-01", 5))),
-               deaths_max=as.Date(c("2020-02-07", "2020-03-24", rep("2020-06-01", 5))))) %>%
-  pivot_longer(-country, names_to = "bound", values_to = "date") %>%
-  separate(bound, into = c("obs", "minmax"), sep = "_") %>%
-  group_by(obs) %>%
-  nest() %>%
-  mutate(bounds = purrr::map(data, ~ pivot_wider(., names_from=minmax, values_from=date)),
-         min_date = purrr::map(bounds, ~ pick_min(.)),
-         max_date = purrr::map(bounds, ~ pick_max(.))) %>%
-  select(obs, min_date, max_date)
-
-exp_phase_fit <- function(dataset, bounds, variable) {
-  bounds <- bounds %>%
-    filter(obs==quo_name(variable)) %>%
-    pivot_wider(names_from = minmax, values_from = date)
-  exp_start <- bounds %>% select(country, min) %>% deframe()
-  exp_end <- bounds %>% select(country, max) %>% deframe()
+exp_fit <- function(dataset, variable, before) {
   dataset %>%
-  filter(country %in% bounds$country,
-         date <= exp_end[country] & date >= exp_start[country]) %>%
-  mutate("day" = date - exp_start[country]) %>%
-  group_by(country) %>%
-  do(fit = lm(log(cases + 1) ~ day, data=.))
+    replace_na(list(cases = 0, deaths = 0, recovered = 0)) %>%
+    group_by(country) %>%
+    mutate(days = date - min(date),
+           fits = slide_index2(!!variable, days, .i=date,
+                                    .f=~lm(log(.x) + 1 ~ .y), .before = before),
+           params = purrr::map(fits, tidy)) %>%
+  unnest(params) %>%
+  filter(term==".y") %>%
+  dplyr::select(country, date, estimate) %>%
+  nest(date, estimate)
 }
 
-exp_phase_fit_cases <- exp_phase_fit(by_country_state, bounds, quo(cases))
-exp_phase_fit_deaths <- exp_phase_fit(by_country_state, bounds, quo(deaths))
+# exp_phase_fit_cases %>%
+#   augment(fit) %>%
+#   rename("log_confirmed" = `log.cases...1.`) %>%
+#   ggplot(aes(x=day, y=log_confirmed), color=country) +
+#   geom_point(aes(color=country)) +
+#   geom_line(aes(y=.fitted, color=country)) +
+#   xlab("Day of exponential phase") +
+#   ylab("log10(confirmed cases)") +
+#   ggtitle(paste("Exponential phase of growth in confirmed cases as of", latest_date)) +
+#   
+# 
+# 
+# pick_min <- function(df) {
+#   df %>%
+#     ungroup() %>%
+#     select(country, min) %>%
+#     deframe()
+# }
+# 
+# pick_max <- function(df) {
+#   df %>%
+#     ungroup() %>%
+#     select(country, max) %>%
+#     deframe()
+# }
+# 
+# bounds <- as_tibble(list(country=c("China","New York","Italy","Spain",
+#                          "California","Washington", "US"),
+#                cases_min=as.Date(c("2020-01-22", "2020-03-08", rep("2020-03-01", 5))),
+#                cases_max=as.Date(c("2020-02-07", "2020-06-01",
+#                                     "2020-03-22", rep("2020-06-01", 4))),
+#                deaths_min=as.Date(c("2020-01-22", "2020-03-13", rep("2020-03-01", 5))),
+#                deaths_max=as.Date(c("2020-02-07", "2020-03-24", rep("2020-06-01", 5))))) %>%
+#   pivot_longer(-country, names_to = "bound", values_to = "date") %>%
+#   separate(bound, into = c("obs", "minmax"), sep = "_") %>%
+#   group_by(obs) %>%
+#   nest() %>%
+#   mutate(bounds = purrr::map(data, ~ pivot_wider(., names_from=minmax, values_from=date))) %>%
+#   select(obs, bounds)
+# 
+# exp_phase_fit <- function(dataset, bounds, variable) {
+#   bounds_var <- bounds %>%
+#     filter(obs==quo_name(variable)) %>%
+#     unnest(bounds) %>%
+#     ungroup()
+#   exp_start <- bounds_var %>% select(country, min) %>% deframe()
+#   exp_end <- bounds_var %>% select(country, max) %>% deframe()
+#   dataset %>%
+#   filter(country %in% bounds_var$country,
+#          date <= exp_end[country] & date >= exp_start[country]) %>%
+#   mutate("day" = date - exp_start[country]) %>%
+#   group_by(country) %>%
+#   do(fit = lm(log(cases + 1) ~ day, data=.))
+# }
+# 
+# exp_phase_fit_cases <- exp_phase_fit(by_country_state, bounds, quo(cases))
+# exp_phase_fit_deaths <- exp_phase_fit(by_country_state, bounds, quo(deaths))
+
+countries <- c("China","New York","Italy","Spain", "California","Washington", "US")
+countries <- c("New York","Italy","Spain", "California","Washington", "US")
+
+exp_fits <- by_country_state %>%
+  filter(country %in% countries) %>%
+  exp_fit(quo(cases), before = 5) %>%
+  group_by(country) %>%
+  mutate(max_est = purrr::map_dbl(data, ~max(.$estimate)),
+         max_date = as.Date(purrr::map_dbl(data, ~ .$date[which.max(.$estimate)]),
+                            origin = "1970-01-01"))
+p1 <- exp_fits %>%
+  unnest(data) %>%
+  { ggplot(., aes(x = date, y = estimate, color = country)) +
+      geom_line() +
+      geom_text(data = . %>%
+                  filter(date == max_date) %>%
+                  ungroup(),# %>%
+                  #top_n(topn, estimate),
+                aes(label = country, color = country, x = date, y = estimate),
+                hjust = "right",
+                vjust = "bottom") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      ggtitle("Exponential parameter over previous 5 days")
+  }
+
+p2 <- by_country_state %>%
+  filter(country %in% countries) %>%
+  mutate(cases = log(cases + 1)) %>%
+  ggplot(aes(x=date, y=cases, color=country)) +
+  geom_line(aes(y=cases, color=country)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+grid.arrange(p1, p2, nrow = 2)
+
+```
+```{r exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
+exp_fits %>%
+  select(country, max_est, max_date) %>%
+  rename("Maximum rate" = max_est, "Date of maximum" = max_date) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
 
 ```
 
+
 ```{r curve-fit-plot-functions, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 
-countries <- bounds_cases$country
+countries <- bounds %>%
+  unnest(bounds) %>%
+  ungroup() %>%
+  select(country) %>%
+  distinct() %>%
+  dplyr::pull(country)
 
 country_log_timeplot <- function(dataset, countries, variable, topn = 10) {
   lag_day <- lag_days(dataset, countries) %>%
