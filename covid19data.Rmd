@@ -319,7 +319,8 @@ complete <- report_data %>%
          "deaths"=Deaths,
          "recovered"=Recovered) %>%
   mutate(country = recode(country, !!!countries)) %>%
-  mutate(state = recode(state, !!!states))
+  mutate(state = recode(state, !!!states)) %>%
+  filter(!grepl("Travis, CA", state))
 
 ```
 
@@ -363,16 +364,15 @@ us_states <- by_state %>%
   separate(state, into=c("region", "st"), sep=",", fill="left", remove=FALSE) %>%
   mutate(st=state_names[str_trim(st)], region=str_trim(region)) %>%
   mutate(state=if_else(is.na(st), state, st)) %>%
-  select(-st)
+  left_join(us_county_pop %>% filter(COUNTY == "000"), by = c("state" = "STNAME")) %>%
+  filter(!is.na(pop)) %>%
+  dplyr::select(state, pop, date, cases, recovered, deaths)
 
 us_states_current <- us_states %>%
   group_by(state, date) %>%
   summarize_if(is.numeric, sum) %>%
   arrange(state, date) %>%
-  slice(n()) %>%
-  left_join(us_county_pop %>% filter(COUNTY == "000"), by = c("state" = "STNAME")) %>%
-  filter(!is.na(pop)) %>%
-  dplyr::select(state, pop, date, cases, recovered, deaths)
+  slice(n())
 
 us_counties_current <- complete %>%
   filter(country=="US", !is.na(county)) %>%
@@ -512,7 +512,7 @@ grid.arrange(p1, p2, nrow = 1)
 # Confirmed cases and deaths by US state
 
 
-```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between countries. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between states. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
 
 us_states %>%
   filter(cases >= 100) %>%
@@ -538,6 +538,28 @@ us_states %>%
 Cumulative number of confirmed cases aggregated across all regions within state.
 
 ```{r us-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
+state_log_plot <- function(dataset, variable) {
+  dataset %>%
+    filter(!!variable >= 10) %>%
+    group_by(state) %>%
+    mutate(day = date - min(date), maxday = max(day)) %>%
+    { ggplot(., aes(x=day, y=!!variable, group=state)) +
+    geom_line(aes(color=state)) +
+    geom_text(data = subset(., day == maxday), aes(label = state,
+                                                     colour = state,
+                                                     x = day,
+                                                     y = !!variable), hjust = -.1) +
+    xlab("Day of pandemic") +
+    ylab(quo_name(variable)) +
+    scale_y_log10() +
+    theme_minimal() +  
+    theme(legend.position = "none") +
+    xlim(0, max(.$day) + 10) +
+    ggtitle(paste(quo_name(variable), "as of", latest_date))
+  }
+
+}
+
 state_map <- function(dataset, variable) {
   log_breaks <- 2 * 5**seq(0,8)
   states_map %>%
@@ -709,7 +731,8 @@ grid.arrange(p3, p4, nrow = 1)
 
 
 ```
-```{r cper-capita-ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within California.", echo=FALSE, warning=FALSE, message=FALSE}
+
+```{r per-capita-ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within California.", echo=FALSE, warning=FALSE, message=FALSE}
 
 p1 <- us_counties_current %>%
   filter(state=="California") %>%
@@ -821,88 +844,36 @@ Expoential growth parameters were estimated for 5-day moving window over cases.
 
 ```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
-exp_fit <- function(dataset, variable, before) {
+exp_fit <- function(dataset, political_unit, variable, before) {
   dataset %>%
     replace_na(list(cases = 0, deaths = 0, recovered = 0)) %>%
-    group_by(country) %>%
+    group_by(!!political_unit) %>%
     mutate(days = date - min(date),
            fits = slide_index2(!!variable, days, .i=date,
-                                    .f=~lm(log(.x) + 1 ~ .y), .before = before),
+                                    .f=~lm(log(.x + 1) ~ .y), .before = before),
            params = purrr::map(fits, tidy)) %>%
   unnest(params) %>%
   filter(term==".y") %>%
-  dplyr::select(country, date, estimate) %>%
+  dplyr::select(!!political_unit, date, estimate) %>%
   nest(date, estimate)
 }
 
-# exp_phase_fit_cases %>%
-#   augment(fit) %>%
-#   rename("log_confirmed" = `log.cases...1.`) %>%
-#   ggplot(aes(x=day, y=log_confirmed), color=country) +
-#   geom_point(aes(color=country)) +
-#   geom_line(aes(y=.fitted, color=country)) +
-#   xlab("Day of exponential phase") +
-#   ylab("log10(confirmed cases)") +
-#   ggtitle(paste("Exponential phase of growth in confirmed cases as of", latest_date)) +
-#   
-# 
-# 
-# pick_min <- function(df) {
-#   df %>%
-#     ungroup() %>%
-#     select(country, min) %>%
-#     deframe()
-# }
-# 
-# pick_max <- function(df) {
-#   df %>%
-#     ungroup() %>%
-#     select(country, max) %>%
-#     deframe()
-# }
-# 
-# bounds <- as_tibble(list(country=c("China","New York","Italy","Spain",
-#                          "California","Washington", "US"),
-#                cases_min=as.Date(c("2020-01-22", "2020-03-08", rep("2020-03-01", 5))),
-#                cases_max=as.Date(c("2020-02-07", "2020-06-01",
-#                                     "2020-03-22", rep("2020-06-01", 4))),
-#                deaths_min=as.Date(c("2020-01-22", "2020-03-13", rep("2020-03-01", 5))),
-#                deaths_max=as.Date(c("2020-02-07", "2020-03-24", rep("2020-06-01", 5))))) %>%
-#   pivot_longer(-country, names_to = "bound", values_to = "date") %>%
-#   separate(bound, into = c("obs", "minmax"), sep = "_") %>%
-#   group_by(obs) %>%
-#   nest() %>%
-#   mutate(bounds = purrr::map(data, ~ pivot_wider(., names_from=minmax, values_from=date))) %>%
-#   select(obs, bounds)
-# 
-# exp_phase_fit <- function(dataset, bounds, variable) {
-#   bounds_var <- bounds %>%
-#     filter(obs==quo_name(variable)) %>%
-#     unnest(bounds) %>%
-#     ungroup()
-#   exp_start <- bounds_var %>% select(country, min) %>% deframe()
-#   exp_end <- bounds_var %>% select(country, max) %>% deframe()
-#   dataset %>%
-#   filter(country %in% bounds_var$country,
-#          date <= exp_end[country] & date >= exp_start[country]) %>%
-#   mutate("day" = date - exp_start[country]) %>%
-#   group_by(country) %>%
-#   do(fit = lm(log(cases + 1) ~ day, data=.))
-# }
-# 
-# exp_phase_fit_cases <- exp_phase_fit(by_country_state, bounds, quo(cases))
-# exp_phase_fit_deaths <- exp_phase_fit(by_country_state, bounds, quo(deaths))
 
-countries <- c("China","New York","Italy","Spain", "California","Washington", "US")
-countries <- c("New York","Italy","Spain", "California","Washington", "US")
+countries <- c("China","New York","Italy","Spain",
+               "California","Washington", "US", "South Dakota")
 
 exp_fits <- by_country_state %>%
-  filter(country %in% countries) %>%
-  exp_fit(quo(cases), before = 5) %>%
+  filter(country %in% countries, cases > 9) %>%
+  exp_fit(quo(country), quo(cases), before = 5) %>%
   group_by(country) %>%
   mutate(max_est = purrr::map_dbl(data, ~max(.$estimate)),
          max_date = as.Date(purrr::map_dbl(data, ~ .$date[which.max(.$estimate)]),
+                            origin = "1970-01-01"),
+         last_est = purrr::map_dbl(data, ~ .$estimate[which.max(.$date)]),
+         last_date = as.Date(purrr::map_dbl(data, ~ max(.$date)),
                             origin = "1970-01-01"))
+
+
 p1 <- exp_fits %>%
   unnest(data) %>%
   { ggplot(., aes(x = date, y = estimate, color = country)) +
@@ -930,15 +901,89 @@ p2 <- by_country_state %>%
 grid.arrange(p1, p2, nrow = 2)
 
 ```
+
+
 ```{r exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
 exp_fits %>%
-  select(country, max_est, max_date) %>%
-  rename("Maximum rate" = max_est, "Date of maximum" = max_date) %>%
+  select(-data) %>%
+  arrange(desc(max_est)) %>%
+  rename("Maximum rate" = max_est, "Date of maximum" = max_date,
+         "Current rate" = last_est, "Current date" = last_date) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+
+```{r state-curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
+
+states = c("California", "New York", "South Dakota")
+
+exp_fits <- us_states %>%
+  filter(cases > 9) %>%
+  exp_fit(quo(state), quo(cases), before = 5) %>%
+  group_by(state) %>%
+  mutate(max_est = purrr::map_dbl(data, ~max(.$estimate)),
+         max_date = as.Date(purrr::map_dbl(data, ~ .$date[which.max(.$estimate)]),
+                            origin = "1970-01-01"),
+         last_est = purrr::map_dbl(data, ~ .$estimate[which.max(.$date)]),
+         last_date = as.Date(purrr::map_dbl(data, ~ max(.$date)),
+                            origin = "1970-01-01"))
+
+
+p1 <- exp_fits %>%
+  filter(state %in% states) %>%
+  unnest(data) %>%
+  { ggplot(., aes(x = date, y = estimate, color = state)) +
+      geom_line() +
+      geom_text(data = . %>%
+                  filter(date == max_date) %>%
+                  ungroup(),# %>%
+                  #top_n(topn, estimate),
+                aes(label = state, color = state, x = date, y = estimate),
+                hjust = "right",
+                vjust = "bottom") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      ggtitle("Exponential parameter over previous 5 days")
+  }
+
+p2 <- us_states %>%
+  filter(state %in% states, cases > 9) %>%
+  mutate(cases = log(cases + 1)) %>%
+  ggplot(aes(x=date, y=cases, color=state)) +
+  geom_line(aes(y=cases, color=state)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+grid.arrange(p1, p2, nrow = 2)
+
+```
+
+
+```{r state-exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
+exp_fits %>%
+  select(-data) %>%
+  ungroup() %>%
+  arrange(desc(max_est)) %>%
+  slice(1:10) %>%
+  rename("Maximum rate" = max_est, "Date of maximum" = max_date,
+         "Current rate" = last_est, "Current date" = last_date) %>%
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 
+exp_fits %>%
+  select(-data) %>%
+  ungroup() %>%
+  arrange(desc(last_est)) %>%
+  slice(1:10) %>%
+  rename("Maximum rate" = max_est, "Date of maximum" = max_date,
+         "Current rate" = last_est, "Current date" = last_date) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
 
 ```
+
 
 
 ```{r curve-fit-plot-functions, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
