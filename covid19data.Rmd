@@ -363,16 +363,15 @@ us_states <- by_state %>%
   separate(state, into=c("region", "st"), sep=",", fill="left", remove=FALSE) %>%
   mutate(st=state_names[str_trim(st)], region=str_trim(region)) %>%
   mutate(state=if_else(is.na(st), state, st)) %>%
-  select(-st)
+  left_join(us_county_pop %>% filter(COUNTY == "000"), by = c("state" = "STNAME")) %>%
+  filter(!is.na(pop)) %>%
+  dplyr::select(state, pop, date, cases, recovered, deaths)
 
 us_states_current <- us_states %>%
   group_by(state, date) %>%
   summarize_if(is.numeric, sum) %>%
   arrange(state, date) %>%
-  slice(n()) %>%
-  left_join(us_county_pop %>% filter(COUNTY == "000"), by = c("state" = "STNAME")) %>%
-  filter(!is.na(pop)) %>%
-  dplyr::select(state, pop, date, cases, recovered, deaths)
+  slice(n())
 
 us_counties_current <- complete %>%
   filter(country=="US", !is.na(county)) %>%
@@ -512,7 +511,7 @@ grid.arrange(p1, p2, nrow = 1)
 # Confirmed cases and deaths by US state
 
 
-```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between countries. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between states. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
 
 us_states %>%
   filter(cases >= 100) %>%
@@ -538,6 +537,28 @@ us_states %>%
 Cumulative number of confirmed cases aggregated across all regions within state.
 
 ```{r us-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
+state_log_plot <- function(dataset, variable) {
+  dataset %>%
+    filter(!!variable >= 10) %>%
+    group_by(state) %>%
+    mutate(day = date - min(date), maxday = max(day)) %>%
+    { ggplot(., aes(x=day, y=!!variable, group=state)) +
+    geom_line(aes(color=state)) +
+    geom_text(data = subset(., day == maxday), aes(label = state,
+                                                     colour = state,
+                                                     x = day,
+                                                     y = !!variable), hjust = -.1) +
+    xlab("Day of pandemic") +
+    ylab(quo_name(variable)) +
+    scale_y_log10() +
+    theme_minimal() +  
+    theme(legend.position = "none") +
+    xlim(0, max(.$day) + 10) +
+    ggtitle(paste(quo_name(variable), "as of", latest_date))
+  }
+
+}
+
 state_map <- function(dataset, variable) {
   log_breaks <- 2 * 5**seq(0,8)
   states_map %>%
