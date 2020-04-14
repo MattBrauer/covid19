@@ -304,7 +304,9 @@ states <- report_data %>%
   mutate(state = ifelse(country=="US" & grepl("Virgin Islands", state),
                         "Virgin Islands", state),
          state = ifelse(country=="US" & grepl("D.C.", state),
-                        "District of Columbia", state)         ) %>%
+                        "District of Columbia", state),
+         state = ifelse(country=="US" & grepl("New York", state),
+                        "New York", state)) %>%
   select(name, state) %>%
   distinct() %>%
   filter(!is.na(state)) %>%
@@ -334,10 +336,16 @@ complete <- report_data %>%
 # limit to US and remove locations (mostly through early March) that are specific within states
 #   (e.g., "Berkeley, CA")
 by_state <- complete %>%
-  filter(country=="US", !grepl(",", state)) %>%
+  filter(country=="US") %>%
+  ungroup() %>%
+  separate(state, into=c("region", "st"), sep=",", fill="left", remove=FALSE) %>%
+  mutate(st=state_names[str_trim(st)],
+         region=str_trim(region),
+         state=if_else(is.na(st), state, st)) %>%
+  select(-st) %>%
   group_by(state, date) %>%
   summarize(cases=sum(cases), recovered=sum(recovered), deaths=sum(deaths))
-
+ 
 # totals by country
 by_country <- complete %>%
   group_by(country, date) %>%
@@ -345,27 +353,13 @@ by_country <- complete %>%
 
 # total by country, except US where total by state
 # (for comparing US states to countries ex-US)
-by_country_state <- complete %>%
-  ungroup() %>%
-  separate(state, into=c("region", "st"), sep=",", fill="left", remove=FALSE) %>%
-  mutate(st=state_names[str_trim(st)],
-         region=str_trim(region),
-         state=if_else(is.na(st), state, st)) %>%
-  select(-st) %>%
-  mutate(country = if_else(country=="US", state, country)) %>%
-  group_by(country, date) %>%
-  summarize(cases=sum(cases), recovered=sum(recovered), deaths=sum(deaths)) %>%
-  filter(country != "US") %>%
+by_country_state <- by_state %>%
+  rename(country = state) %>%
   bind_rows(by_country) %>%
   distinct()
 
 us_states <- by_state %>%
-  ungroup() %>%
-  separate(state, into=c("region", "st"), sep=",", fill="left", remove=FALSE) %>%
-  mutate(st=state_names[str_trim(st)], region=str_trim(region)) %>%
-  mutate(state=if_else(is.na(st), state, st)) %>%
   left_join(us_county_pop %>% filter(COUNTY == "000"), by = c("state" = "STNAME")) %>%
-  filter(!is.na(pop)) %>%
   dplyr::select(state, pop, date, cases, recovered, deaths)
 
 us_states_current <- us_states %>%
@@ -960,8 +954,9 @@ grid.arrange(p1, p2, nrow = 2)
 
 ```
 
+## State exponential fits, 10 highest maximum rates of growth
 
-```{r state-exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
+```{r state-max-exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
 exp_fits %>%
   select(-data) %>%
   ungroup() %>%
@@ -971,7 +966,12 @@ exp_fits %>%
          "Current rate" = last_est, "Current date" = last_date) %>%
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
+```
 
+
+## State exponential fits, 10 highest current rates of growth
+
+```{r state-last-exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
 exp_fits %>%
   select(-data) %>%
   ungroup() %>%
@@ -983,7 +983,6 @@ exp_fits %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 
 ```
-
 
 
 ```{r curve-fit-plot-functions, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
