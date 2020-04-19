@@ -37,7 +37,7 @@ Latest version: `r commits(repository("."))[[1]]$message`
 # Background
 
 
-This page contains plots of unprocessed data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6).
+This page contains plots of unprocessed data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://coronavirus.jhu.edu/map.html).
 
 (Also see relevant Lancet paper here: [An interactive web-based dashboard to track COVID-19 in real time](https://doi.org/10.1016/S1473-3099(20)30120-1).)
 
@@ -52,6 +52,7 @@ Some cautions:
 
 # Some (more sophisticated and useful) tracking resources
 
+* [JHU dashboard](https://coronavirus.jhu.edu/map.html)
 * [UW Virology COVID-19 Dashboard](http://depts.washington.edu/labmed/covid19/)
 * [Kinsa US Health Weather Map](https://healthweather.us/): real-time tracking of atypical fever frequencies
 * [Epidemic modeling](http://gabgoh.github.io/COVID/index.html)
