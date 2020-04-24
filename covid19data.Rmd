@@ -633,18 +633,24 @@ grid.arrange(p1, p2, nrow = 1)
 
 ```{r state-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
 
-county_map <- function(dataset, variable) {
+county_map <- function(dataset, variable, show_state=TRUE) {
   log_breaks <- 2 * 5**seq(0,8)
-  counties_map %>%
+  map_data <- counties_map %>%
     filter(region %in% tolower(dataset$state)) %>%
     mutate(state = stringr::str_to_title(region),
-           county = stringr::str_to_title(subregion)) %>%
-    left_join(
-      dataset %>%
+           county = stringr::str_to_title(subregion))
+  case_data <- dataset %>%
         mutate(subregion = tolower(county)) %>%
         filter(!is.na(subregion)) %>%
         dplyr::select(subregion, !! variable)
-    ) %>%
+  if(show_state==TRUE) {
+    lhs <- map_data
+    rhs <- case_data
+  } else {
+    lhs <- case_data
+    rhs <- map_data
+  }
+  left_join(lhs, rhs) %>%
     dplyr::select(-region, -subregion) %>%
     ggplot(aes(long, lat, group = group)) +
     geom_polygon(aes(fill = (!! variable)), color = NA) +
@@ -656,7 +662,6 @@ county_map <- function(dataset, variable) {
     theme_void() +
     ggtitle(paste(quo_name(variable), "as of", latest_date))
 }
-
 
 county_barplot <- function(dataset, variable) {
   dataset %>%
@@ -750,6 +755,67 @@ p4 <- us_counties_current %>%
   county_barplot(quo(deaths))
 grid.arrange(p3, p4, nrow = 1)
 ```
+
+
+# Bay Area counties
+
+```{r ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
+
+bay_area <- c("Santa Clara", "Alameda", "San Francisco", "San Mateo",
+                       "Contra Costa", "Marin", "Sonoma", "Solano", "Napa")
+
+p5 <- complete %>%
+  filter(country=="US", state=="California", county %in% bay_area) %>%
+  county_timeplot(quo(cases))
+p6 <- complete %>%
+  filter(country=="US", state=="California", county %in% bay_area) %>%
+  county_timeplot(quo(deaths))
+grid.arrange(p5, p6, nrow = 1)
+
+p1 <- us_counties_current %>%
+  filter(state=="California", county %in% bay_area) %>%
+  county_map(quo(cases), show_state=FALSE)
+p2 <- us_counties_current %>%
+  filter(state=="California", county %in% bay_area) %>%
+  county_map(quo(deaths), show_state=FALSE)
+grid.arrange(p1, p2, nrow = 1)
+
+p3 <- us_counties_current %>%
+  filter(state=="California", county %in% bay_area) %>%
+  county_barplot(quo(cases))
+p4 <- us_counties_current %>%
+  filter(state=="California", county %in% bay_area) %>%
+  county_barplot(quo(deaths))
+grid.arrange(p3, p4, nrow = 1)
+
+
+
+```
+
+```{r per-capita-ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within California.", echo=FALSE, warning=FALSE, message=FALSE}
+
+p1 <- us_counties_current %>%
+  filter(state=="California", county %in% bay_area) %>%
+#  mutate_at(c("cases", "deaths", "recovered"), ~ . / pop) %>%
+  mutate(cases = 1e6 * cases / pop, se = 1e6 * sqrt(cases / pop)) %>%
+  county_map(quo(cases), show_state=FALSE)
+p2 <- us_counties_current %>%
+  filter(state=="California", county %in% bay_area) %>%
+  mutate(deaths = 1e6 * deaths / pop, se = 1e6 * sqrt(deaths / pop)) %>%
+  county_map(quo(deaths), show_state=FALSE)
+grid.arrange(p1, p2, nrow = 1)
+
+p3 <- us_counties_current %>%
+  filter(state=="California", county %in% bay_area) %>%
+  mutate(cases = 1e6 * cases / pop, se = 1e6 * sqrt(cases / pop)) %>%
+  county_barplot(quo(cases))
+p4 <- us_counties_current %>%
+  filter(state=="California", county %in% bay_area) %>%
+  mutate(deaths = 1e6 * deaths / pop, se = 1e6 * sqrt(deaths / pop)) %>%
+  county_barplot(quo(deaths))
+grid.arrange(p3, p4, nrow = 1)
+```
+
 
 # Comparison of selected US states and countries
 
