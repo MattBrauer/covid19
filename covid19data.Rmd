@@ -495,7 +495,7 @@ p2 <- country_timeplot(countries, quo(deaths))
 grid.arrange(p1, p2, nrow = 1)
 ```
 
-```{r us-italy-plot, fig.wide = TRUE, fig.cap = "Comparing US to Italy. Day of pandemic is an adjustment to allow for different local pandemic start dates.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r us-italy-plot, eval = FALSE, fig.wide = TRUE, fig.cap = "Comparing US to Italy. Day of pandemic is an adjustment to allow for different local pandemic start dates.", echo=FALSE, warning=FALSE, message=FALSE}
 
 countries <- c("Italy", "US")
 p1 <- country_timeplot(countries, quo(cases))
@@ -506,8 +506,9 @@ grid.arrange(p1, p2, nrow = 1)
 
 # Confirmed cases and deaths by US state
 
+## Timeline for all US States
 
-```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between states. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between states. Day 0 for each state is the first day where the number of cases reaced 100.", echo=FALSE, warning=FALSE, message=FALSE}
 
 us_states %>%
   filter(cases >= 100) %>%
@@ -530,7 +531,7 @@ us_states %>%
   }
 ```
 
-Cumulative number of confirmed cases aggregated across all regions within state.
+## Current cumulative cases and deaths by state
 
 ```{r us-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
 state_log_plot <- function(dataset, variable) {
@@ -606,6 +607,7 @@ grid.arrange(p1, p2, nrow = 1)
 
 ```
 
+## Current cumulative per capita cases and deaths by state
 
 ```{r per-capita-state-plots, fig.wide = TRUE, fig.cap = "Cases and deaths per million population by state. Barplots show 10 most affected states", echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -629,7 +631,7 @@ grid.arrange(p1, p2, nrow = 1)
 
 ```
 
-
+# Progression within a US state
 
 ```{r state-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -698,11 +700,9 @@ county_timeplot <- function(dataset, variable, topn=3) {
 
 ```
 
-# Confirmed cases and deaths by California county
+## Timeline of confirmed cases and deaths for California counties
 
-Cumulative number of confirmed cases aggregated across all regions within state.
-
-```{r ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r ca-county-timeplot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
 
 p5 <- complete %>%
   filter(country=="US", state=="California") %>%
@@ -712,6 +712,11 @@ p6 <- complete %>%
   county_timeplot(quo(deaths))
 grid.arrange(p5, p6, nrow = 1)
 
+```
+
+## Current cumulative cases and deaths by California county
+
+```{r ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
 p1 <- us_counties_current %>%
   filter(state=="California") %>%
   county_map(quo(cases))
@@ -731,6 +736,8 @@ grid.arrange(p3, p4, nrow = 1)
 
 
 ```
+
+## Current cumulative per capita cases and deaths by California county
 
 ```{r per-capita-ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within California.", echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -757,9 +764,9 @@ grid.arrange(p3, p4, nrow = 1)
 ```
 
 
-# Bay Area counties
+# Progression within the nine counties of the SF Bay Area
 
-```{r ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
+```{r ba-county-timeplot, fig.wide = TRUE, fig.cap = "Cases and deaths within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 
 bay_area <- c("Santa Clara", "Alameda", "San Francisco", "San Mateo",
                        "Contra Costa", "Marin", "Sonoma", "Solano", "Napa")
@@ -771,6 +778,13 @@ p6 <- complete %>%
   filter(country=="US", state=="California", county %in% bay_area) %>%
   county_timeplot(quo(deaths))
 grid.arrange(p5, p6, nrow = 1)
+
+```
+
+## Current cumulative cases and deaths by California county
+
+
+```{r ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 
 p1 <- us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
@@ -791,6 +805,8 @@ grid.arrange(p3, p4, nrow = 1)
 
 
 ```
+
+## Current cumulative per capita cases and deaths by California county
 
 ```{r per-capita-ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -901,7 +917,7 @@ states_map %>%
 
 # Estimating maximum rate of exponential growth in number of observed cases
 
-Expoential growth parameters were estimated for 5-day moving window over cases.
+Exponential growth parameters were estimated for 5-day moving window over cases.
 
 ```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
