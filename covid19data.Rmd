@@ -759,7 +759,7 @@ grid.arrange(p3, p4, nrow = 1)
 
 # Bay Area counties
 
-```{r ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 
 bay_area <- c("Santa Clara", "Alameda", "San Francisco", "San Mateo",
                        "Contra Costa", "Marin", "Sonoma", "Solano", "Napa")
@@ -792,7 +792,7 @@ grid.arrange(p3, p4, nrow = 1)
 
 ```
 
-```{r per-capita-ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within California.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r per-capita-ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 
 p1 <- us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
