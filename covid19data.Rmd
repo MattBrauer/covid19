@@ -90,6 +90,38 @@ git submodule update --remote --recursive
 csse_data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
 nytimes_data_dir <- "covid-19-data"
 owid_data_dir <- "owid-datasets/datasets"
+ca_hospital_data <- "california-covid-19-hospital-data-and-case-statistics-pppjux"
+```
+
+```{r ca-hospital-data, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+ca_data <- read_csv(file.path(ca_hospital_data, "covid-19-cases.csv")) %>%
+  mutate(`Most Recent Date` = as.Date(`Most Recent Date`, "%m/%d/%Y")) %>%
+  rename("county" = `County Name`,
+         "date" = `Most Recent Date`,
+         "cases" = `Total Count Confirmed`,
+         "deaths" = `Total Count Deaths`,
+         "positive" = `COVID-19 Positive Patients`,
+         "suspected" = `Suspected COVID-19 Positive Patients`,
+         "icu_positive" = `ICU COVID-19 Positive Patients`,
+         "icu_suspected" = `ICU COVID-19 Suspected Patients`)
+
+ca_data %>%
+  pivot_longer(cols=c(-county, -date), names_to = "desc", values_to = "count") %>%
+  group_by(county, date) %>%
+  summarize(count = sum(count))
+
+ca_data %>%
+  group_by(date) %>%
+  summarize_if(is.numeric, sum, na.rm=TRUE) %>%
+  pivot_longer(-date, names_to = "desc", values_to = "count") %>%
+  arrange(desc(date)) %>%
+  group_by(date) %>%
+  summarize(count = sum(count)) %>%
+  ggplot(aes(x=date, y=count)) +
+  geom_point() +
+  
+
 ```
 
 ```{r build_owid-data, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
