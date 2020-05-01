@@ -766,6 +766,8 @@ grid.arrange(p3, p4, nrow = 1)
 
 # Progression within the nine counties of the SF Bay Area
 
+## Timeline of confirmed cases and deaths for Bay Area counties
+
 ```{r ba-county-timeplot, fig.wide = TRUE, fig.cap = "Cases and deaths within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 
 bay_area <- c("Santa Clara", "Alameda", "San Francisco", "San Mateo",
@@ -781,7 +783,7 @@ grid.arrange(p5, p6, nrow = 1)
 
 ```
 
-## Current cumulative cases and deaths by California county
+## Current cumulative cases and deaths for Bay Area counties
 
 
 ```{r ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
@@ -806,7 +808,7 @@ grid.arrange(p3, p4, nrow = 1)
 
 ```
 
-## Current cumulative per capita cases and deaths by California county
+## Current cumulative per capita cases and deaths for Bay Area counties
 
 ```{r per-capita-ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 

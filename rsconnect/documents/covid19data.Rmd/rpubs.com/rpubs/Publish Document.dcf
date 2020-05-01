@@ -4,7 +4,7 @@ username:
 account: rpubs
 server: rpubs.com
 hostUrl: rpubs.com
-appId: https://api.rpubs.com/api/v1/document/587397/9c289b7e235541218112b94d41d4eaa5
-bundleId: https://api.rpubs.com/api/v1/document/587397/9c289b7e235541218112b94d41d4eaa5
-url: http://rpubs.com/mbrauer/587397
-when: 1586235511.49003
+appId: https://api.rpubs.com/api/v1/document/603983/a962ad3a07a940a9b160f925617dfa63
+bundleId: https://api.rpubs.com/api/v1/document/603983/a962ad3a07a940a9b160f925617dfa63
+url: http://rpubs.com/publish/claim/603983/732bf792a5b74ed88baf8006058431bd
+when: 1587706949.14139
