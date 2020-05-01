@@ -94,6 +94,21 @@ owid_data_dir <- "owid-datasets/datasets"
 ca_hospital_data <- "california-covid-19-hospital-data-and-case-statistics-pppjux"
 ```
 
+```{r daily-from-cumulative, echo=FALSE, warning=FALSE, message=FALSE}
+
+## function takes a tsibble with cumulative counts and breaks down to daily counts
+daily_from_cumulative <- function(dataset) {
+  dataset %>%
+    rename_if(is.character, ~paste0("keys_", .)) %>%
+    as_tsibble(index=date, key=starts_with("keys_")) %>%
+    rename_if(is.character, ~gsub("keys_", "", .)) %>%
+    mutate_if(is.numeric, difference) %>%
+    as_tibble()
+}
+```
+
+
+
 ```{r ca-hospital-data, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 
 ca_data <- read_csv(file.path(ca_hospital_data, "covid-19-cases.csv")) %>%
@@ -542,7 +557,7 @@ grid.arrange(p1, p2, nrow = 1)
 
 ## Timeline for all US States
 
-```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between states. Day 0 for each state is the first day where the number of cases reaced 100.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between states. Day 0 for each state is the first day where the number of cases reached 100.", echo=FALSE, warning=FALSE, message=FALSE}
 
 us_states %>%
   filter(cases >= 100) %>%
@@ -565,20 +580,53 @@ us_states %>%
   }
 ```
 
+## Daily totals by state
+
+```{r plot-daily-all-states, fig.wide = TRUE, fig.cap = "Progression of new cases between states.", echo=FALSE, warning=FALSE, message=FALSE}
+
+us_states %>%
+  filter(cases >= 100) %>%
+  group_by(state) %>%
+  daily_from_cumulative() %>%
+  mutate(day = date - min(date), maxday = max(day)) %>%
+  {
+    ggplot(., aes(x=day, y=cases, group=state)) +
+    geom_line(aes(color=state)) +
+    geom_text(data = subset(., day == maxday), aes(label = state,
+                                                     colour = state,
+                                                     x = day,
+                                                     y = cases), hjust = -.1) +
+    xlab("Day of pandemic") +
+    ylab("Confirmed new cases") +
+ #   scale_y_log10() +
+    theme_minimal() +  
+    theme(legend.position = "none") +
+    xlim(0, max(.$day) + 10) +
+    ggtitle(paste("Daily confirmed new cases as of", latest_date))
+  }
+```
+
 ## Current cumulative cases and deaths by state
 
 ```{r us-specific-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
-state_log_plot <- function(dataset, variable) {
+state_log_plot <- function(dataset, variable, topn=5) {
   dataset %>%
     filter(!!variable >= 10) %>%
     group_by(state) %>%
     mutate(day = date - min(date), maxday = max(day)) %>%
     { ggplot(., aes(x=day, y=!!variable, group=state)) +
     geom_line(aes(color=state)) +
-    geom_text(data = subset(., day == maxday), aes(label = state,
-                                                     colour = state,
-                                                     x = day,
-                                                     y = !!variable), hjust = -.1) +
+   geom_text(data = subset(., day == maxday), aes(label = state,
+                                                    colour = state,
+                                                    x = day,
+                                                    y = !!variable), hjust = -.1) +
+    # geom_text(data = . %>%
+    #             filter(day == maxday) %>%
+    #             ungroup() %>%
+    #             top_n(topn, (!! variable)),
+    #           aes(label = state, color = state, x = day, y = (!! variable)),
+    #           hjust = "right",
+    #           vjust = "bottom") +
     xlab("Day of pandemic") +
     ylab(quo_name(variable)) +
     scale_y_log10() +
@@ -624,6 +672,27 @@ states_current_barplot <- function(dataset, variable) {
     ylab("cumulative count") +
     ggtitle(paste(quo_name(variable), " as of", latest_date))
 }
+
+state_timeplot <- function(dataset, variable, topn=3) {
+  dataset %>%
+    filter(!is.na(state)) %>%
+    group_by(state) %>%
+  { ggplot(.) +
+    geom_line(aes(x=date, y=(!!variable), color=state)) +
+    geom_text(data = . %>%
+                filter(date == max(date)) %>%
+                ungroup() %>%
+                top_n(topn, (!! variable)),
+              aes(label = state, color = state, x = date, y = (!! variable)),
+              hjust = "right",
+              vjust = "bottom") +
+      ylim(1, NA) +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      ggtitle(paste0(quo_name(variable), " by state"))
+    }
+}
+
 ```
 
 
@@ -726,6 +795,7 @@ county_timeplot <- function(dataset, variable, topn=3) {
               aes(label = county, color = county, x = date, y = (!! variable)),
               hjust = "right",
               vjust = "bottom") +
+      ylim(0, NA) +
       theme_minimal() +
       theme(legend.position = "none") +
       ggtitle(paste0(quo_name(variable), " by county"))
