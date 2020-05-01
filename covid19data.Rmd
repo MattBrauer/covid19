@@ -65,6 +65,7 @@ Some cautions:
 * [91-divoc](https://91-divoc.com)
 * [COVID-19 health data](https://covid19.healthdata.org/)
 * [Covid Counties](https://covidcounties.org/)
+* [San Francisco Open Data cases by zip code](https://data.sfgov.org/stories/s/Map-of-Cases-by-Zip-Code/bj8f-r6sy/)
 
 # Other news and information links
 
@@ -439,6 +440,7 @@ by_country %>%
 # Comparison of US to selected other countries
 
 ```{r country-plot-functions, echo=FALSE, warning=FALSE, message=FALSE}
+## find date at which each jurisdiction reaches 10% of maximum
 lag_days <- function(dataset, countries) {
  first_deciles <- dataset %>%
   ungroup() %>%
@@ -835,7 +837,7 @@ grid.arrange(p3, p4, nrow = 1)
 ```
 
 
-# Comparison of selected US states and countries
+# Comparison of selected countries and US states
 
 ```{r country-state-plot, echo=FALSE, warning=FALSE, message=FALSE}
 countries <- c("Italy", "California", "New York", "Washington")
