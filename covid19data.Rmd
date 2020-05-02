@@ -102,7 +102,10 @@ daily_from_cumulative <- function(dataset) {
     rename_if(is.character, ~paste0("keys_", .)) %>%
     as_tsibble(index=date, key=starts_with("keys_")) %>%
     rename_if(is.character, ~gsub("keys_", "", .)) %>%
-    mutate_if(is.numeric, difference) %>%
+    mutate_if(is.numeric, .funs = list(new = ~difference(.))) %>%
+    rename_at(vars( contains( "_new") ),
+              list(~paste("new", gsub("_new", "", .), sep = "_"))) %>%
+#    select(-new_pop) %>%
     as_tibble()
 }
 ```
@@ -463,8 +466,6 @@ by_country %>%
 ```
 
 ```{r country-case-facetplot, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-# 
-
 # facetplot of countries
 by_country %>%
   filter(cases >= 100) %>%
@@ -533,15 +534,50 @@ country_timeplot <- function(countries, variable, topn = 10) {
     ggtitle(paste0(quo_name(variable), " by country as of ", latest_date))
   }
 }
+
+country_daily_timeplot <- function(countries, variable, topn = 10) {
+  by_country %>%
+    filter(country %in% countries) %>%
+    daily_from_cumulative() %>%
+    ungroup() %>%
+    group_by(country) %>%
+  { ggplot(.) +
+    geom_line(aes(x=date, y=!!variable, color=country)) +
+    geom_point(aes(x=date, y=!!variable, color=country)) +
+    geom_text(data = . %>%
+                filter(date == max(date)) %>%
+                ungroup() %>%
+                top_n(topn, (!! variable)),
+              aes(label = country, color = country, x = date, y = (!! variable)),
+              hjust = "right",
+              vjust = "bottom") +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    xlab("Day of pandemic") +
+    ylab(quo_name(variable)) +
+    ylim(0, NA) +
+    ggtitle(paste0(quo_name(variable), " by country as of ", latest_date))
+  }
+}
 ```
 
-
-```{r us-italy-china-spain-plot, fig.wide = TRUE, fig.cap = "Pandemic trajectories of several countries. Day of pandemic is an adjustment to allow for different local pandemic start dates." , echo=FALSE, warning=FALSE, message=FALSE}
+```{r us-italy-china-spain-plot, fig.wide = TRUE, fig.cap = "Pandemic trajectories of several countries. Day of pandemic is an adjustment to allow for different local pandemic start dates.", echo=FALSE, warning=FALSE, message=FALSE}
 
 countries <- c("China", "Italy", "Spain", "US")
 p1 <- country_timeplot(countries, quo(cases))
 p2 <- country_timeplot(countries, quo(deaths))
 grid.arrange(p1, p2, nrow = 1)
+
+```
+
+
+```{r us-italy-china-spain-daily, fig.wide = TRUE, fig.cap = "Daily new cases and deaths for selected countries.", echo=FALSE, warning=FALSE, message=FALSE}
+
+countries <- c("China", "Italy", "Spain", "US")
+p1 <- country_daily_timeplot(countries, quo(cases))
+p2 <- country_daily_timeplot(countries, quo(deaths))
+grid.arrange(p1, p2, nrow = 1)
+
 ```
 
 ```{r us-italy-plot, eval = FALSE, fig.wide = TRUE, fig.cap = "Comparing US to Italy. Day of pandemic is an adjustment to allow for different local pandemic start dates.", echo=FALSE, warning=FALSE, message=FALSE}
@@ -549,6 +585,10 @@ grid.arrange(p1, p2, nrow = 1)
 countries <- c("Italy", "US")
 p1 <- country_timeplot(countries, quo(cases))
 p2 <- country_timeplot(countries, quo(deaths))
+grid.arrange(p1, p2, nrow = 1)
+
+p1 <- country_daily_timeplot(countries, quo(cases))
+p2 <- country_daily_timeplot(countries, quo(deaths))
 grid.arrange(p1, p2, nrow = 1)
 
 ```
@@ -1309,3 +1349,25 @@ exp_phase_deaths_tabular %>%
   ggtitle("Maximum rate of exponential growth (+/- SE) in deaths")
 ```
 
+# Maximum daily new cases and deaths by US state
+
+## New cases and deaths
+
+```{r max-new-daily, eval=FALSE}
+us_states %>%
+  daily_from_cumulative() %>%
+  ungroup() %>%
+  select(-pop) %>%
+  pivot_longer(c(-state, -date), names_to="obs", values_to="value") %>%
+  arrange(state, date, obs) %>%
+  group_by(state, obs) %>%
+  top_n(-1)
+  
+  
+exp_phase_tabular %>%
+  select(region, start, end, estimate) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+## New cases and deaths per million population
