@@ -50,42 +50,11 @@ Some cautions:
 * Reported numbers are absolute cumulative, not rates. They have not been scaled to population size.
 * Dates are dates reported, not necessarily date of observation.
 
-# Some (more sophisticated and useful) tracking resources
-
-* [JHU dashboard](https://coronavirus.jhu.edu/map.html)
-* [UW Virology COVID-19 Dashboard](http://depts.washington.edu/labmed/covid19/)
-* [Kinsa US Health Weather Map](https://healthweather.us/): real-time tracking of atypical fever frequencies
-* [Epidemic modeling](http://gabgoh.github.io/COVID/index.html)
-* [NEJM Coronavirus papers](https://www.nejm.org/coronavirus?cid=DM88311&bid=165352681)
-* [The COVID Tracking Project](https://covidtracking.com/)
-* [Our World in Data](https://ourworldindata.org/coronavirus)
-* [JHU news releases](https://releases.jhu.edu/)
-* [SF Chronicle California case tracker](https://projects.sfchronicle.com/2020/coronavirus-map/)
-* [Real-time tracking of pathogen evolution](https://nextstrain.org/)
-* [91-divoc](https://91-divoc.com)
-* [COVID-19 health data](https://covid19.healthdata.org/)
-* [Covid Counties](https://covidcounties.org/)
-* [San Francisco Open Data cases by zip code](https://data.sfgov.org/stories/s/Map-of-Cases-by-Zip-Code/bj8f-r6sy/)
-
-# Other news and information links
-
-* [The Atlantic Covid-19 coverage](https://www.theatlantic.com/category/what-you-need-know-coronavirus/)
-* [Home testing](https://www.ninetylawn.com/at-home-coronavirus-testing/)
-
-# Updates and notes
-
-JHU appears to update their data daily at around 4pm PDT. I usually re-run the script sometime after that. At other times I'm fiddling with changing layouts and refactoring code, and updates usually reflect that.
-
-Currently, plots are aligned by setting the local day 0 as the date at which a given country/locality crosses 10% of the maximum cases, deaths, etc. in a comparison.
-
-To do: automate the estimation of maximum exponential parameter for various curves. Currently this is done by manually setting a date range over which the fit is done.
-
-I'll be happy to take requests for specific plots. Feel free to open an issue on the [project GitHub page](https://github.com/MattBrauer/covid19). Also, take, use and propagate any code or data you find there if you find it useful.
-
 ```{bash git-pull, echo=FALSE, warning=FALSE, message=FALSE}
 ## refresh data from JHU, NY Times and OWID github repos
 git submodule update --remote --recursive
 ```
+
 
 ```{r data-sources, echo=FALSE, warning=FALSE, message=FALSE}
 csse_data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
@@ -99,13 +68,13 @@ ca_hospital_data <- "california-covid-19-hospital-data-and-case-statistics-pppju
 ## function takes a tsibble with cumulative counts and breaks down to daily counts
 daily_from_cumulative <- function(dataset) {
   dataset %>%
+    select_at(vars(!contains("pop"))) %>%
     rename_if(is.character, ~paste0("keys_", .)) %>%
     as_tsibble(index=date, key=starts_with("keys_")) %>%
     rename_if(is.character, ~gsub("keys_", "", .)) %>%
     mutate_if(is.numeric, .funs = list(new = ~difference(.))) %>%
     rename_at(vars( contains( "_new") ),
               list(~paste("new", gsub("_new", "", .), sep = "_"))) %>%
-#    select(-new_pop) %>%
     as_tibble()
 }
 ```
@@ -437,6 +406,21 @@ latest_date <- complete %>%
   dplyr::pull(date)
 
 latest_date <- as.Date(latest_date)
+```
+
+```{r state-daily, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+state_daily_stats <- us_states %>%
+  daily_from_cumulative() %>%
+  pivot_longer(c(-state, -date), names_to="obs", values_to="value") %>%
+  group_by(state, obs) %>%
+  arrange(state, obs, desc(value)) %>%
+  top_n(1, value) %>%
+  arrange(state, obs, desc(date)) %>%
+  slice(1)
+
+state_peak_stats <- state_daily_stats %>%
+  
 ```
 
 
@@ -1371,3 +1355,42 @@ exp_phase_tabular %>%
 ```
 
 ## New cases and deaths per million population
+
+# References and other resources
+
+## Primary data sources
+
+* [JHU dashboard](https://coronavirus.jhu.edu/map.html)
+* [The COVID Tracking Project](https://covidtracking.com/)
+* NY Times tracking data
+* CA hostpital data
+
+## Other sources
+
+* [UW Virology COVID-19 Dashboard](http://depts.washington.edu/labmed/covid19/)
+* [Kinsa US Health Weather Map](https://healthweather.us/): real-time tracking of atypical fever frequencies
+* [Epidemic modeling](http://gabgoh.github.io/COVID/index.html)
+* [NEJM Coronavirus papers](https://www.nejm.org/coronavirus?cid=DM88311&bid=165352681)
+* [Our World in Data](https://ourworldindata.org/coronavirus)
+* [JHU news releases](https://releases.jhu.edu/)
+* [SF Chronicle California case tracker](https://projects.sfchronicle.com/2020/coronavirus-map/)
+* [Real-time tracking of pathogen evolution](https://nextstrain.org/)
+* [91-divoc](https://91-divoc.com)
+* [COVID-19 health data](https://covid19.healthdata.org/)
+* [Covid Counties](https://covidcounties.org/)
+* [San Francisco Open Data cases by zip code](https://data.sfgov.org/stories/s/Map-of-Cases-by-Zip-Code/bj8f-r6sy/)
+
+## News links
+
+* [The Atlantic Covid-19 coverage](https://www.theatlantic.com/category/what-you-need-know-coronavirus/)
+* [Home testing](https://www.ninetylawn.com/at-home-coronavirus-testing/)
+
+## Updates and notes
+
+JHU appears to update their data daily at around 4pm PDT. I usually re-run the script sometime after that. At other times I'm fiddling with changing layouts and refactoring code, and updates usually reflect that.
+
+Currently, plots are aligned by setting the local day 0 as the date at which a given country/locality crosses 10% of the maximum cases, deaths, etc. in a comparison.
+
+To do: automate the estimation of maximum exponential parameter for various curves. Currently this is done by manually setting a date range over which the fit is done.
+
+I'll be happy to take requests for specific plots. Feel free to open an issue on the [project GitHub page](https://github.com/MattBrauer/covid19). Also, take, use and propagate any code or data you find there if you find it useful.
