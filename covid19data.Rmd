@@ -223,7 +223,15 @@ names(state_abbreviations) <- state_names
 ```{r nytimes-load, echo=FALSE, warning=FALSE, message=FALSE}
 nyt_counties <- read_csv(paste0(nytimes_data_dir, "/us-counties.csv"))
 nyt_states <- read_csv(paste0(nytimes_data_dir, "/us-states.csv"))
+
+## From NY Times web page, scraped 2020-05-03
+shutdown_dates <- read_csv("statewide_events.csv") %>%
+  pivot_longer(-state, names_to = "event", values_to = "event_date") %>%
+  mutate(event_date = as.Date(paste0("2020-", event_date)),
+         state = state_names[state]) %>%
+  arrange(state, event_date)
 ```
+
 
 ```{r csse-new-data-model-load, echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -407,22 +415,6 @@ latest_date <- complete %>%
 
 latest_date <- as.Date(latest_date)
 ```
-
-```{r state-daily, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-
-state_daily_stats <- us_states %>%
-  daily_from_cumulative() %>%
-  pivot_longer(c(-state, -date), names_to="obs", values_to="value") %>%
-  group_by(state, obs) %>%
-  arrange(state, obs, desc(value)) %>%
-  top_n(1, value) %>%
-  arrange(state, obs, desc(date)) %>%
-  slice(1)
-
-state_peak_stats <- state_daily_stats %>%
-  
-```
-
 
 # Progression of cases compared between countries
 
@@ -1051,13 +1043,15 @@ Exponential growth parameters were estimated for 5-day moving window over cases.
 
 ```{r curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
-exp_fit <- function(dataset, political_unit, variable, before) {
+exp_fit <- function(dataset, political_unit, variable, window) {
   dataset %>%
     replace_na(list(cases = 0, deaths = 0, recovered = 0)) %>%
     group_by(!!political_unit) %>%
     mutate(days = date - min(date),
            fits = slide_index2(!!variable, days, .i=date,
-                                    .f=~lm(log(.x + 1) ~ .y), .before = before),
+                               .f=~lm(log(.x + 1) ~ .y),
+                               .before = window,
+                               .after = window),
            params = purrr::map(fits, tidy)) %>%
   unnest(params) %>%
   filter(term==".y") %>%
@@ -1065,13 +1059,12 @@ exp_fit <- function(dataset, political_unit, variable, before) {
   nest(date, estimate)
 }
 
-
 countries <- c("China","New York","Italy","Spain",
                "California","Washington", "US", "South Dakota")
 
 exp_fits <- by_country_state %>%
-  filter(country %in% countries, cases > 9) %>%
-  exp_fit(quo(country), quo(cases), before = 5) %>%
+  filter(country %in% countries, cases > 100) %>%
+  exp_fit(quo(country), quo(cases), window = 5) %>%
   group_by(country) %>%
   mutate(max_est = purrr::map_dbl(data, ~max(.$estimate)),
          max_date = as.Date(purrr::map_dbl(data, ~ .$date[which.max(.$estimate)]),
@@ -1128,7 +1121,7 @@ states = c("California", "New York", "South Dakota")
 
 exp_fits <- us_states %>%
   filter(cases > 9) %>%
-  exp_fit(quo(state), quo(cases), before = 5) %>%
+  exp_fit(quo(state), quo(cases), window = 5) %>%
   group_by(state) %>%
   mutate(max_est = purrr::map_dbl(data, ~max(.$estimate)),
          max_date = as.Date(purrr::map_dbl(data, ~ .$date[which.max(.$estimate)]),
@@ -1333,11 +1326,111 @@ exp_phase_deaths_tabular %>%
   ggtitle("Maximum rate of exponential growth (+/- SE) in deaths")
 ```
 
+
+# Average daily statistics, by selected US state
+
+```{r state-daily, echo=FALSE, warning=FALSE, message=FALSE}
+
+state_daily_stats <- us_states %>%
+  daily_from_cumulative()
+
+state_peak_stats <- state_daily_stats %>%
+  pivot_longer(c(-state, -date), names_to="obs", values_to="value") %>%
+  group_by(state, obs) %>%
+  arrange(state, obs, desc(value)) %>%
+  top_n(1, value) %>%
+  arrange(state, obs, desc(date)) %>%
+  filter(grepl("new_", obs)) %>%
+  slice(1)
+
+event_dates <- exp_fits %>%
+  dplyr::select(-data, -max_est, -last_est, -last_date) %>%
+  rename("max_exp" = max_date) %>%
+  pivot_longer(-state, names_to = "event", values_to = "event_date") %>%
+  bind_rows(shutdown_dates) %>%
+  arrange(state, event_date)
+
+## rolling average
+rolling_average <- function(dataset = state_daily_stats,
+                            area_label = quo(state),
+                            variable = quo(new_cases),
+                            event_markers = event_dates,
+                            window = 5) {
+  start_date <- min(c(as.Date("2020-02-01"), dataset$date))
+  dataset %>%
+    left_join(event_markers,
+              by=c(quo_name(area_label), "date" = "event_date")) %>%
+    as_tsibble(key=!!area_label, index=date) %>%
+    group_by(!!area_label) %>%
+    mutate(avg = slider::slide_dbl(.x = !!variable,
+                                   .f = mean,
+                                   .before = window,
+                                   .after = window)) %>%
+    { 
+      ggplot(., aes(x = date, y = !!variable)) +
+        geom_vline(data = . %>% filter(event=="sip_start"),
+                   aes(xintercept = date), color = "red", linetype = 2) +
+        geom_vline(data = . %>% filter(event=="max_exp"),
+                   aes(xintercept = date), color = "red", linetype = 1) +
+        geom_vline(data = . %>% filter(event=="sip_end"),
+                   aes(xintercept = date), color = "green", linetype = 2) +
+        geom_line(aes(x = date, y=avg)) +
+        geom_point(aes(x = date, y=!!variable), shape = 20, fill = "red", color = "red") +
+        ylim(0,NA) +
+        xlim(start_date, NA) +
+        facet_wrap(vars(state),
+                   scale = "free",
+                   ncol=2)
+    }
+}
+
+
+```
+
+## Average daily new cases
+
+```{r average-daily-new-cases, fig.cap = "Daily new cases with 5-day rolling mean. Red dotted line indicates the start date for statewide shelter-in-place restrictions. Green indicates the lifting of SIP.", echo=FALSE, warning=FALSE, message=FALSE}
+states <- c("Mississippi", "Florida", "Michigan", "South Dakota")
+state_daily_stats %>%
+  filter(state %in% states) %>%
+  rolling_average(variable = quo(new_cases))
+
+states <- c("Washington","California","New York", "Louisiana")
+state_daily_stats %>%
+  filter(state %in% states) %>%
+  rolling_average(variable = quo(new_cases))
+
+states <- c("Alabama", "Georgia", "Kentucky", "Virginia")
+state_daily_stats %>%
+  filter(state %in% states) %>%
+  rolling_average(variable = quo(new_cases))
+```
+
+## Average daily new deaths
+
+```{r average-daily-new-deaths, fig.cap = "Daily new deaths with 5-day rolling mean. Red dotted line indicates the start date for statewide shelter-in-place restrictions. Green indicates the lifting of SIP.", echo=FALSE, warning=FALSE, message=FALSE}
+states <- c("Mississippi", "Florida", "Michigan", "South Dakota")
+state_daily_stats %>%
+  filter(state %in% states) %>%
+  rolling_average(variable = quo(new_deaths))
+
+states <- c("Washington","California","New York", "Louisiana")
+state_daily_stats %>%
+  filter(state %in% states) %>%
+  rolling_average(variable = quo(new_deaths))
+
+states <- c("Alabama", "Georgia", "Kentucky", "Virginia")
+state_daily_stats %>%
+  filter(state %in% states) %>%
+  rolling_average(variable = quo(new_deaths))
+```
+
+
 # Maximum daily new cases and deaths by US state
 
 ## New cases and deaths
 
-```{r max-new-daily, eval=FALSE}
+```{r max-new-daily, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 us_states %>%
   daily_from_cumulative() %>%
   ungroup() %>%
