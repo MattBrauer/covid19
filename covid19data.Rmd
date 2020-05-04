@@ -1,5 +1,5 @@
 ---
-title: "JHU COVID-19 data"
+title: "COVID-19 epidemiology data"
 author: "Matt Brauer"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
@@ -35,7 +35,7 @@ Some cautions:
 * Reported numbers are absolute cumulative, not rates. They have not been scaled to population size.
 * Dates are dates reported, not necessarily date of observation.
 
-```{bash git-pull, echo=FALSE, warning=FALSE, message=FALSE}
+```{bash git-pull, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 ## refresh data from JHU, NY Times and OWID github repos
 git submodule update --remote --recursive
 ```
