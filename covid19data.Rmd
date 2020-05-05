@@ -1027,32 +1027,67 @@ event_dates <- exp_fits %>%
   bind_rows(shutdown_dates) %>%
   arrange(state, event_date)
 
+split_chunks <- function(tbl, chunksize = 4) {
+  n <- nrow(tbl)
+  r <- rep(1:ceiling(n/chunksize),each=chunksize)[1:n]
+  lapply(split(tbl,r), function(chunk) chunk %>% dplyr::pull(state))
+}
+
+sip_classes <- event_dates %>%
+  pivot_wider(names_from=event, values_from=event_date) %>%
+  dplyr::select(state, sip_start, sip_end) %>%
+  mutate(class = case_when(!is.na(sip_start) & !is.na(sip_end) & sip_end < today() ~ "on_off",
+                           !is.na(sip_start) ~ "on",
+                           TRUE ~ "off")) %>%
+  group_by(class) %>%
+  filter(state %in% state_names)
+
+states_by_sip_policy <- sip_classes %>%
+  group_map(~ split_chunks(.x))
+names(states_by_sip_policy) <- c("off", "on", "on_off")
 
 ```
 
 ## Average daily new cases
 
 ```{r average-daily-new-cases, fig.cap = "Daily new cases with 5-day rolling mean. Red dotted line indicates the start date for statewide shelter-in-place restrictions. Green indicates the lifting of SIP.", echo=FALSE, warning=FALSE, message=FALSE}
-states <- c("Mississippi", "Florida", "Michigan", "South Dakota")
-state_daily_stats %>%
-  filter(state %in% states) %>%
-  rolling_average(variable = quo(new_cases))
 
-states <- c("Washington","California","New York", "Louisiana")
-state_daily_stats %>%
-  filter(state %in% states) %>%
-  rolling_average(variable = quo(new_cases))
+new_cases_plots <- lapply(states_by_sip_policy,
+                          function(class)
+                            lapply(class, function(states) {
+                              state_daily_stats %>%
+                                filter(state %in% states) %>%
+                                rolling_average(variable = quo(new_cases))
+                            })
+)
+new_cases_plots
 
-states <- c("Alabama", "Georgia", "Kentucky", "Virginia")
-state_daily_stats %>%
-  filter(state %in% states) %>%
-  rolling_average(variable = quo(new_cases))
+# states <- c("Mississippi", "Florida", "Michigan", "Arizona")
+# state_daily_stats %>%
+#   filter(state %in% states) %>%
+#   rolling_average(variable = quo(new_cases))
+# 
+# states <- c("Washington","California","New York", "Louisiana")
+# state_daily_stats %>%
+#   filter(state %in% states) %>%
+#   rolling_average(variable = quo(new_cases))
+# 
+# states <- c("Alabama", "Georgia", "Kentucky", "Virginia")
+# state_daily_stats %>%
+#   filter(state %in% states) %>%
+#   rolling_average(variable = quo(new_cases))
+# 
+# states <- c("Maryland", "District of Columbia", "West Virginia", "Virginia")
+# state_daily_stats %>%
+#   filter(state %in% states) %>%
+#   rolling_average(variable = quo(new_deaths))
+
 ```
 
 ## Average daily new deaths
 
 ```{r average-daily-new-deaths, fig.cap = "Daily new deaths with 5-day rolling mean. Red dotted line indicates the start date for statewide shelter-in-place restrictions. Green indicates the lifting of SIP.", echo=FALSE, warning=FALSE, message=FALSE}
-states <- c("Mississippi", "Florida", "Michigan", "South Dakota")
+states <- c("Mississippi", "Florida", "Michigan", "Arizona")
 state_daily_stats %>%
   filter(state %in% states) %>%
   rolling_average(variable = quo(new_deaths))
