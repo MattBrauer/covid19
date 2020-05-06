@@ -21,6 +21,7 @@ Latest version: `r commits(repository("."))[[1]]$message`
 
 # Background
 
+
 This page contains plots of unprocessed data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://coronavirus.jhu.edu/map.html).
 
 (Also see relevant Lancet paper here: [An interactive web-based dashboard to track COVID-19 in real time](https://doi.org/10.1016/S1473-3099(20)30120-1).)
@@ -39,12 +40,14 @@ Some cautions:
 git submodule update --remote --recursive
 ```
 
+
 ```{r data-source-locations, echo=FALSE, warning=FALSE, message=FALSE}
 csse_data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
 nytimes_data_dir <- "covid-19-data"
 owid_data_dir <- "owid-datasets/datasets"
 ca_hospital_data <- "california-covid-19-hospital-data-and-case-statistics-pppjux"
 ```
+
 
 ```{r load-ca-hospital-data, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 ## WIP
@@ -432,6 +435,7 @@ grid.arrange(p1, p2, nrow = 1)
 
 ```
 
+
 ```{r us-italy-china-spain-daily, fig.wide = TRUE, fig.cap = "Daily new cases and deaths for selected countries.", echo=FALSE, warning=FALSE, message=FALSE}
 
 countries <- c("China", "Italy", "Spain", "US")
@@ -681,6 +685,7 @@ p4 <- us_counties_current %>%
   county_barplot(quo(deaths))
 grid.arrange(p3, p4, nrow = 1)
 ```
+
 
 # Comparison of selected countries and US states
 

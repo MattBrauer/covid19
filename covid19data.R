@@ -47,6 +47,7 @@ lag_days <- function(dataset, countries) {
   
 }
 
+## country specific plot functions
 country_timeplot <- function(countries, variable, topn = 10) {
   lag_day <- lag_days(by_country, countries) %>%
     select(country, (!!variable)) %>%
@@ -101,6 +102,54 @@ country_daily_timeplot <- function(countries, variable, topn = 10) {
     }
 }
 
+country_log_timeplot <- function(dataset, countries, variable, topn = 10) {
+  lag_day <- lag_days(dataset, countries) %>%
+    select(country, (!!variable)) %>%
+    deframe()
+  dataset %>%
+    filter(country %in% countries) %>%
+    mutate("day" = date - min(date),
+           "lag_date" = date - lag_day[country]) %>%
+    ungroup() %>%
+    mutate("lag_date" = lag_date - min(lag_date)) %>%
+    group_by(country) %>%
+    { ggplot(.) +
+        geom_line(aes(x=lag_date, y=!!variable, color=country)) +
+        geom_point(aes(x=lag_date, y=!!variable, color=country)) +
+        geom_text(data = . %>%
+                    filter(lag_date == max(lag_date)) %>%
+                    ungroup() %>%
+                    top_n(topn, (!! variable)),
+                  aes(label = country, color = country, x = lag_date, y = (!! variable)),
+                  hjust = "right",
+                  vjust = "bottom") +
+        scale_y_log10() +
+        theme_minimal() +
+        theme(legend.position = "none") +
+        xlab("Day of pandemic") +
+        ylab(quo_name(variable)) +
+        ggtitle(paste0(quo_name(variable), " by country as of ", latest_date))
+    }
+}
+
+country_state_plot <- function(countries, variable) {
+  lag_day <- lag_days(by_country_state, countries) %>%
+    select(country, !!variable) %>%
+    deframe()
+  by_country_state %>%
+    filter(country %in% countries) %>%
+    mutate("day" = date - min(date),
+           "lag_date" = date - lag_day[country]) %>%
+    rename("region" = country) %>%
+    ggplot(aes(x=lag_date, y=!!variable, group=region)) +
+    geom_point(aes(color=region)) +
+    geom_line(aes(color=region)) +
+    xlab("Day of pandemic") +
+    ylab(quo_name(variable)) +
+    ggtitle(paste(quo_name(variable), "as of", latest_date))
+}
+
+## state specific plot functions
 state_log_plot <- function(dataset, variable, topn=5) {
   dataset %>%
     filter(!!variable >= 10) %>%
@@ -178,7 +227,7 @@ state_timeplot <- function(dataset, variable, topn=3) {
     }
 }
 
-## state specific plot functions
+## county specific plot functions
 county_map <- function(dataset, variable, show_state=TRUE) {
   log_breaks <- 2 * 5**seq(0,8)
   map_data <- counties_map %>%
@@ -241,54 +290,6 @@ county_timeplot <- function(dataset, variable, topn=3) {
         theme(legend.position = "none") +
         ggtitle(paste0(quo_name(variable), " by county"))
     }
-}
-
-country_log_timeplot <- function(dataset, countries, variable, topn = 10) {
-  lag_day <- lag_days(dataset, countries) %>%
-    select(country, (!!variable)) %>%
-    deframe()
-  dataset %>%
-    filter(country %in% countries) %>%
-    mutate("day" = date - min(date),
-           "lag_date" = date - lag_day[country]) %>%
-    ungroup() %>%
-    mutate("lag_date" = lag_date - min(lag_date)) %>%
-    group_by(country) %>%
-    { ggplot(.) +
-        geom_line(aes(x=lag_date, y=!!variable, color=country)) +
-        geom_point(aes(x=lag_date, y=!!variable, color=country)) +
-        geom_text(data = . %>%
-                    filter(lag_date == max(lag_date)) %>%
-                    ungroup() %>%
-                    top_n(topn, (!! variable)),
-                  aes(label = country, color = country, x = lag_date, y = (!! variable)),
-                  hjust = "right",
-                  vjust = "bottom") +
-        scale_y_log10() +
-        theme_minimal() +
-        theme(legend.position = "none") +
-        xlab("Day of pandemic") +
-        ylab(quo_name(variable)) +
-        ggtitle(paste0(quo_name(variable), " by country as of ", latest_date))
-    }
-}
-
-
-country_state_plot <- function(countries, variable) {
-  lag_day <- lag_days(by_country_state, countries) %>%
-    select(country, !!variable) %>%
-    deframe()
-  by_country_state %>%
-    filter(country %in% countries) %>%
-    mutate("day" = date - min(date),
-           "lag_date" = date - lag_day[country]) %>%
-    rename("region" = country) %>%
-    ggplot(aes(x=lag_date, y=!!variable, group=region)) +
-    geom_point(aes(color=region)) +
-    geom_line(aes(color=region)) +
-    xlab("Day of pandemic") +
-    ylab(quo_name(variable)) +
-    ggtitle(paste(quo_name(variable), "as of", latest_date))
 }
 
 exp_fit <- function(dataset, political_unit, variable, window) {
