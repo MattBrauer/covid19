@@ -1,21 +1,22 @@
 
 csse_data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
 nytimes_data_dir <- "covid-19-data"
-owid_data_dir <- "owid-datasets/datasets"
-ca_hospital_data <- "california-covid-19-hospital-data-and-case-statistics-pppjux"
 
-## WIP
-# ca_data <- read_csv(file.path(ca_hospital_data, "covid-19-cases.csv")) %>%
-#   mutate(`Most Recent Date` = as.Date(`Most Recent Date`, "%m/%d/%Y")) %>%
-#   rename("county" = `County Name`,
-#          "date" = `Most Recent Date`,
-#          "cases" = `Total Count Confirmed`,
-#          "deaths" = `Total Count Deaths`,
-#          "positive" = `COVID-19 Positive Patients`,
-#          "suspected" = `Suspected COVID-19 Positive Patients`,
-#          "icu_positive" = `ICU COVID-19 Positive Patients`,
-#          "icu_suspected" = `ICU COVID-19 Suspected Patients`)
-# 
+
+###############################
+## CA hospital data
+###############################
+ca_hospital_data <- "california-covid-19-hospital-data-and-case-statistics-pppjux"
+ca_data <- read_csv(file.path(ca_hospital_data, "covid-19-cases.csv")) %>%
+  mutate(`Most Recent Date` = as.Date(`Most Recent Date`, "%m/%d/%Y")) %>%
+  rename("county" = `County Name`,
+         "date" = `Most Recent Date`,
+         "cases" = `Total Count Confirmed`,
+         "deaths" = `Total Count Deaths`,
+         "positive" = `COVID-19 Positive Patients`,
+         "suspected" = `Suspected COVID-19 Positive Patients`,
+         "icu_positive" = `ICU COVID-19 Positive Patients`,
+         "icu_suspected" = `ICU COVID-19 Suspected Patients`)
 # ca_data %>%
 #   pivot_longer(cols=c(-county, -date), names_to = "desc", values_to = "count") %>%
 #   group_by(county, date) %>%
@@ -31,6 +32,11 @@ ca_hospital_data <- "california-covid-19-hospital-data-and-case-statistics-pppju
 #   ggplot(aes(x=date, y=count)) +
 #   geom_point()
 
+
+###############################
+## OWID demographic data
+###############################
+owid_data_dir <- "owid-datasets/datasets"
 ## overkill: gets all of the owid data
 # owid_data_dirs <- dir_ls(owid_data_dir) #, glob="*.csv")
 # owid_covid_tests_file <- dir_ls(file.path(owid_data_dir, "COVID-19 Tests"), glob="*.csv")
@@ -73,6 +79,10 @@ us_state_pop <- read_csv("demographic_data/nst-est2019-alldata.csv") %>%
 # us_county_pop %>%
 #   filter(COUNTY != "000", STNAME == "Alabama")
 
+
+###############################
+## COVID tracking data
+###############################
 covid_tracking <- "https://covidtracking.com/api/"
 covid_dataset_names <- c("states", "states/daily", "states/info",
                          "us", "us/daily",
@@ -99,6 +109,9 @@ covid_datasets$`states/daily` <- covid_datasets$`states/daily` %>%
 covid_datasets$`us/daily` <- covid_datasets$`us/daily` %>%
   mutate(date = as.Date(as.character(date), "%Y%m%d"))
 
+###############################
+## map data
+###############################
 states_map <- map_data("state")
 counties_map <- map_data("county")
 
@@ -123,6 +136,9 @@ state_names <- c("Alabama", "Alaska", "Arizona", "Kansas",
 names(state_names) <- state_abbreviations
 names(state_abbreviations) <- state_names
 
+###############################
+## NYT data
+###############################
 nyt_counties <- read_csv(paste0(nytimes_data_dir, "/us-counties.csv"))
 nyt_states <- read_csv(paste0(nytimes_data_dir, "/us-states.csv"))
 
@@ -133,6 +149,11 @@ shutdown_dates <- read_csv("statewide_events.csv") %>%
          state = state_names[state]) %>%
   arrange(state, event_date)
 
+
+###############################
+## JHU CSSE data:
+##   from git repo as submodule
+###############################
 # daily reports data. follows different data models at different times, so a fair bit
 #  of tweeking is necessary
 
@@ -256,7 +277,7 @@ complete <- report_data %>%
 # US states
 # limit to US and remove locations (mostly through early March) that are specific within states
 #   (e.g., "Berkeley, CA")
-by_state <- complete %>%
+csse_by_state <- complete %>%
   filter(country=="US") %>%
   ungroup() %>%
   separate(state, into=c("region", "st"), sep=",", fill="left", remove=FALSE) %>%
@@ -267,29 +288,31 @@ by_state <- complete %>%
   group_by(state, date) %>%
   summarize(cases=sum(cases), recovered=sum(recovered), deaths=sum(deaths))
 
-# totals by country
-by_country <- complete %>%
+## totals by country
+csse_by_country <- complete %>%
   group_by(country, date) %>%
   summarize(cases=sum(cases), recovered=sum(recovered), deaths=sum(deaths))
 
-# total by country, except US where total by state
-# (for comparing US states to countries ex-US)
-by_country_state <- by_state %>%
+## total by country, except US where total by state
+## (for comparing US states to countries ex-US)
+csse_by_country_state <- csse_by_state %>%
   rename(country = state) %>%
-  bind_rows(by_country) %>%
+  bind_rows(csse_by_country) %>%
   distinct()
 
-us_states <- by_state %>%
+## add population
+csse_us_states <- csse_by_state %>%
   left_join(us_county_pop %>% filter(COUNTY == "000"), by = c("state" = "STNAME")) %>%
   dplyr::select(state, pop, date, cases, recovered, deaths)
 
-us_states_current <- us_states %>%
+## current numbers
+csse_us_states_current <- csse_us_states %>%
   group_by(state, date) %>%
   summarize_if(is.numeric, sum) %>%
   arrange(state, date) %>%
   slice(n())
 
-us_counties_current <- complete %>%
+csse_us_counties_current <- complete %>%
   filter(country=="US", !is.na(county)) %>%
   group_by(state, county) %>%
   top_n(1, date) %>%

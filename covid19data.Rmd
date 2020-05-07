@@ -42,9 +42,9 @@ git submodule update --remote --recursive
 
 # Progression of cases compared between countries
 
-```{r plot-all-countries, fig.wide = TRUE, fig.cap = "Progression of cases between countries. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r plot-all-countries0, eval = FALSE, fig.wide = TRUE, fig.cap = "Progression of cases between countries. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
 
-by_country %>%
+csse_by_country %>%
   filter(cases >= 100) %>%
   group_by(country) %>%
   mutate(day = date - min(date), maxday = max(day)) %>%
@@ -65,9 +65,19 @@ by_country %>%
   }
 ```
 
+```{r plot-all-countries, fig.wide = TRUE, fig.cap = "Progression of cases between countries. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
+
+csse_by_country %>%
+  filter(cases >= 100) %>%
+  group_by(country) %>%
+  mutate(day = date - min(date), maxday = max(day)) %>% timeplot(quo(cases), log_scale = TRUE, lag_percentile = 0, topn = 25)
+```
+
+
+
 ```{r country-case-facetplot, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 # facetplot of countries
-by_country %>%
+csse_by_country %>%
   filter(cases >= 100) %>%
   group_by(country) %>%
   mutate(day = date - min(date), maxday = max(day)) %>%
@@ -90,8 +100,11 @@ by_country %>%
 ```{r us-italy-china-spain-plot, fig.wide = TRUE, fig.cap = "Pandemic trajectories of several countries. Day of pandemic is an adjustment to allow for different local pandemic start dates.", echo=FALSE, warning=FALSE, message=FALSE}
 
 countries <- c("China", "Italy", "Spain", "US")
-p1 <- country_timeplot(countries, quo(cases))
-p2 <- country_timeplot(countries, quo(deaths))
+# p1 <- country_timeplot(countries, quo(cases))
+# p2 <- country_timeplot(countries, quo(deaths))
+
+p1 <- csse_by_country %>% filter(country %in% countries) %>% group_by(country) %>% timeplot(quo(cases), show_points = TRUE)
+p2 <- csse_by_country %>% filter(country %in% countries) %>% group_by(country) %>% timeplot(quo(deaths), show_points = TRUE)
 grid.arrange(p1, p2, nrow = 1)
 
 ```
@@ -124,7 +137,7 @@ grid.arrange(p1, p2, nrow = 1)
 
 ```{r plot-all-states, fig.wide = TRUE, fig.cap = "Progression of cases between states. Day 0 for each state is the first day where the number of cases reached 100.", echo=FALSE, warning=FALSE, message=FALSE}
 
-us_states %>%
+csse_us_states %>%
   filter(cases >= 100) %>%
   group_by(state) %>%
   mutate(day = date - min(date), maxday = max(day)) %>%
@@ -149,7 +162,7 @@ us_states %>%
 
 ```{r plot-daily-all-states, fig.wide = TRUE, fig.cap = "Progression of new cases between states.", echo=FALSE, warning=FALSE, message=FALSE}
 
-us_states %>%
+csse_us_states %>%
   filter(cases >= 100) %>%
   group_by(state) %>%
   daily_from_cumulative() %>%
@@ -175,13 +188,13 @@ us_states %>%
 
 ```{r state-plots, fig.wide = TRUE, fig.cap = "Cases and deaths by state. Barplots show 10 most affected states", echo=FALSE, warning=FALSE, message=FALSE}
 
-p1 <- us_states_current %>% state_map(quo(cases))
-p2 <- us_states_current %>% state_map(quo(deaths))
+p1 <- csse_us_states_current %>% state_map(quo(cases))
+p2 <- csse_us_states_current %>% state_map(quo(deaths))
 
 grid.arrange(p1, p2, nrow = 1)
 
-p1 <- us_states_current %>% states_current_barplot(quo(cases))
-p2 <- us_states_current %>% states_current_barplot(quo(deaths))
+p1 <- csse_us_states_current %>% states_current_barplot(quo(cases))
+p2 <- csse_us_states_current %>% states_current_barplot(quo(deaths))
 
 grid.arrange(p1, p2, nrow = 1)
 
@@ -191,19 +204,19 @@ grid.arrange(p1, p2, nrow = 1)
 
 ```{r per-capita-state-plots, fig.wide = TRUE, fig.cap = "Cases and deaths per million population by state. Barplots show 10 most affected states", echo=FALSE, warning=FALSE, message=FALSE}
 
-p1 <- us_states_current %>%
+p1 <- csse_us_states_current %>%
   mutate_at(c("cases", "deaths", "recovered"), ~ (. * 1e6) / pop) %>%
   state_map(quo(cases))
-p2 <- us_states_current %>%
+p2 <- csse_us_states_current %>%
   mutate_at(c("cases", "deaths", "recovered"), ~ (. * 1e6) / pop) %>%
   state_map(quo(deaths))
 
 grid.arrange(p1, p2, nrow = 1)
 
-p1 <- us_states_current %>%
+p1 <- csse_us_states_current %>%
   mutate_at(c("cases", "deaths", "recovered"), ~ (. * 1e6) / pop) %>%
   states_current_barplot(quo(cases))
-p2 <- us_states_current %>%
+p2 <- csse_us_states_current %>%
   mutate_at(c("cases", "deaths", "recovered"), ~ (. * 1e6) / pop) %>%
   states_current_barplot(quo(deaths))
 
@@ -230,18 +243,18 @@ grid.arrange(p5, p6, nrow = 1)
 ## Current cumulative cases and deaths by California county
 
 ```{r ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
-p1 <- us_counties_current %>%
+p1 <- csse_us_counties_current %>%
   filter(state=="California") %>%
   county_map(quo(cases))
-p2 <- us_counties_current %>%
+p2 <- csse_us_counties_current %>%
   filter(state=="California") %>%
   county_map(quo(deaths))
 grid.arrange(p1, p2, nrow = 1)
 
-p3 <- us_counties_current %>%
+p3 <- csse_us_counties_current %>%
   filter(state=="California") %>%
   county_barplot(quo(cases))
-p4 <- us_counties_current %>%
+p4 <- csse_us_counties_current %>%
   filter(state=="California") %>%
   county_barplot(quo(deaths))
 grid.arrange(p3, p4, nrow = 1)
@@ -254,22 +267,22 @@ grid.arrange(p3, p4, nrow = 1)
 
 ```{r per-capita-ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within California.", echo=FALSE, warning=FALSE, message=FALSE}
 
-p1 <- us_counties_current %>%
+p1 <- csse_us_counties_current %>%
   filter(state=="California") %>%
 #  mutate_at(c("cases", "deaths", "recovered"), ~ . / pop) %>%
   mutate(cases = 1e6 * cases / pop, se = 1e6 * sqrt(cases / pop)) %>%
   county_map(quo(cases))
-p2 <- us_counties_current %>%
+p2 <- csse_us_counties_current %>%
   filter(state=="California") %>%
   mutate(deaths = 1e6 * deaths / pop, se = 1e6 * sqrt(deaths / pop)) %>%
   county_map(quo(deaths))
 grid.arrange(p1, p2, nrow = 1)
 
-p3 <- us_counties_current %>%
+p3 <- csse_us_counties_current %>%
   filter(state=="California") %>%
   mutate(cases = 1e6 * cases / pop, se = 1e6 * sqrt(cases / pop)) %>%
   county_barplot(quo(cases))
-p4 <- us_counties_current %>%
+p4 <- csse_us_counties_current %>%
   filter(state=="California") %>%
   mutate(deaths = 1e6 * deaths / pop, se = 1e6 * sqrt(deaths / pop)) %>%
   county_barplot(quo(deaths))
@@ -300,18 +313,18 @@ grid.arrange(p5, p6, nrow = 1)
 
 ```{r ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 
-p1 <- us_counties_current %>%
+p1 <- csse_us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
   county_map(quo(cases), show_state=FALSE)
-p2 <- us_counties_current %>%
+p2 <- csse_us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
   county_map(quo(deaths), show_state=FALSE)
 grid.arrange(p1, p2, nrow = 1)
 
-p3 <- us_counties_current %>%
+p3 <- csse_us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
   county_barplot(quo(cases))
-p4 <- us_counties_current %>%
+p4 <- csse_us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
   county_barplot(quo(deaths))
 grid.arrange(p3, p4, nrow = 1)
@@ -324,22 +337,22 @@ grid.arrange(p3, p4, nrow = 1)
 
 ```{r per-capita-ba-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within SF Bay Area counties", echo=FALSE, warning=FALSE, message=FALSE}
 
-p1 <- us_counties_current %>%
+p1 <- csse_us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
 #  mutate_at(c("cases", "deaths", "recovered"), ~ . / pop) %>%
   mutate(cases = 1e6 * cases / pop, se = 1e6 * sqrt(cases / pop)) %>%
   county_map(quo(cases), show_state=FALSE)
-p2 <- us_counties_current %>%
+p2 <- csse_us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
   mutate(deaths = 1e6 * deaths / pop, se = 1e6 * sqrt(deaths / pop)) %>%
   county_map(quo(deaths), show_state=FALSE)
 grid.arrange(p1, p2, nrow = 1)
 
-p3 <- us_counties_current %>%
+p3 <- csse_us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
   mutate(cases = 1e6 * cases / pop, se = 1e6 * sqrt(cases / pop)) %>%
   county_barplot(quo(cases))
-p4 <- us_counties_current %>%
+p4 <- csse_us_counties_current %>%
   filter(state=="California", county %in% bay_area) %>%
   mutate(deaths = 1e6 * deaths / pop, se = 1e6 * sqrt(deaths / pop)) %>%
   county_barplot(quo(deaths))
@@ -351,8 +364,10 @@ grid.arrange(p3, p4, nrow = 1)
 ```{r country-state-plot, echo=FALSE, warning=FALSE, message=FALSE}
 countries <- c("Italy", "California", "New York", "Washington")
 
-country_state_plot(countries, quo(cases))
-country_state_plot(countries, quo(deaths))
+csse_by_country_state %>% filter(country %in% countries) %>% timeplot(quo(cases), topn = 4)
+csse_by_country_state %>% filter(country %in% countries) %>% timeplot(quo(deaths), topn = 4)
+#country_state_plot(countries, quo(cases))
+#country_state_plot(countries, quo(deaths))
 ```
 
 # Number of tests administered (from `covidtracking.com`)
@@ -396,7 +411,7 @@ states_map %>%
 
 states_map %>%
   left_join(
-    us_states_current %>%
+    csse_us_states_current %>%
     mutate(fips = state_abbreviations[state],
           region = tolower(state)) %>%
     filter(!is.na(region)) %>%
@@ -420,7 +435,7 @@ Exponential growth parameters were estimated for 5-day moving window over cases.
 countries <- c("China","New York","Italy","Spain",
                "California","Washington", "US", "South Dakota")
 
-exp_fits <- by_country_state %>%
+exp_fits <- csse_by_country_state %>%
   filter(country %in% countries, cases > 100) %>%
   exp_fit(quo(country), quo(cases), window = 5) %>%
   group_by(country) %>%
@@ -448,7 +463,7 @@ p1 <- exp_fits %>%
       ggtitle("Exponential parameter over previous 5 days")
   }
 
-p2 <- by_country_state %>%
+p2 <- csse_by_country_state %>%
   filter(country %in% countries) %>%
   mutate(cases = log(cases + 1)) %>%
   ggplot(aes(x=date, y=cases, color=country)) +
@@ -474,7 +489,7 @@ exp_fits %>%
 
 states = c("California", "New York", "South Dakota")
 
-exp_fits <- us_states %>%
+exp_fits <- csse_us_states %>%
   filter(cases > 9) %>%
   exp_fit(quo(state), quo(cases), window = 5) %>%
   group_by(state) %>%
@@ -503,7 +518,7 @@ p1 <- exp_fits %>%
       ggtitle("Exponential parameter over previous 5 days")
   }
 
-p2 <- us_states %>%
+p2 <- csse_us_states %>%
   filter(state %in% states, cases > 9) %>%
   mutate(cases = log(cases + 1)) %>%
   ggplot(aes(x=date, y=cases, color=state)) +
@@ -553,12 +568,12 @@ countries <- bounds %>%
   distinct() %>%
   dplyr::pull(country)
 
-p1 <- country_log_timeplot(by_country_state, countries, quo(deaths), topn=10)
+p1 <- country_log_timeplot(csse_by_country_state, countries, quo(deaths), topn=10)
 
 
-lag_day <- lag_days(by_country_state, countries) %>% select(country, cases) %>% deframe()
+lag_day <- lag_days(csse_by_country_state, countries) %>% select(country, cases) %>% deframe()
 
-by_country_state %>%
+csse_by_country_state %>%
   filter(country %in% countries) %>%
   mutate("day" = date - lag_day[country], "log_confirmed" = log(cases + 1)) %>%
   ggplot(aes(x=date, y=log_confirmed), color=country) +
@@ -577,9 +592,9 @@ exp_phase_fit_cases %>%
   ylab("log10(confirmed cases)") +
   ggtitle(paste("Exponential phase of growth in confirmed cases as of", latest_date))
 
-lag_day <- lag_days(by_country_state, countries) %>% select(country, deaths) %>% deframe()
+lag_day <- lag_days(csse_by_country_state, countries) %>% select(country, deaths) %>% deframe()
 
-by_country_state %>%
+csse_by_country_state %>%
   filter(country %in% countries) %>%
   mutate("day" = date - lag_day[country], "log_deaths" = log(deaths + 1)) %>%
   ggplot(aes(x=date, y=log_deaths), color=country) +
@@ -653,7 +668,7 @@ exp_phase_deaths_tabular %>%
 
 ```{r state-daily, echo=FALSE, warning=FALSE, message=FALSE}
 
-state_daily_stats <- us_states %>%
+state_daily_stats <- csse_us_states %>%
   daily_from_cumulative()
 
 state_peak_stats <- state_daily_stats %>%
@@ -753,7 +768,7 @@ state_daily_stats %>%
 ## New cases and deaths
 
 ```{r max-new-daily, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-us_states %>%
+csse_us_states %>%
   daily_from_cumulative() %>%
   ungroup() %>%
   select(-pop) %>%
