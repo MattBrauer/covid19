@@ -30,29 +30,80 @@ daily_from_cumulative <- function(dataset) {
 }
 
 ## find date at which each jurisdiction reaches 10% of maximum
-lag_days <- function(dataset, countries) {
+lag_days <- function(dataset, percentile = 10) {
+  var_classes <- lapply(dataset, class)
+  date_var <- names(var_classes)[var_classes == "Date"][1]
+  grouping_var <- names(var_classes)[var_classes == "character"][1]
   first_deciles <- dataset %>%
     ungroup() %>%
-    filter(country %in% countries) %>%
-    summarize(cases = max(cases, na.rm=TRUE) / 10,
-              deaths = max(deaths, na.rm=TRUE) / 10,
-              recovered = max(recovered, na.rm=TRUE) / 10)
-  
+    summarize_if(is.numeric, ~max(., na.rm=TRUE)/percentile)
   dataset %>%
-    filter(country %in% countries) %>%
-    group_by(country) %>%
+    group_by(!!ensym(grouping_var)) %>%
     summarize(cases = max(date[cases < (first_deciles %>% dplyr::pull(cases))], na.rm=TRUE),
               deaths = max(date[deaths < (first_deciles %>% dplyr::pull(deaths))], na.rm=TRUE),
               recovered = max(date[recovered < (first_deciles %>% dplyr::pull(recovered))], na.rm=TRUE))
-  
+}
+
+## 'timeplot' takes a dataset with:
+##    one 'character' column describing [country|state|county|...]
+##    a column of class 'Date'
+##    one or more columns of class 'numeric' for the plotting variable
+timeplot <- function(dataset, variable, log_scale = FALSE, show_points = FALSE, lag_percentile = 10, topn = 3) {
+  var_classes <- lapply(dataset, class)
+  if(!quo_name(variable) %in% names(var_classes)[var_classes == "numeric"])
+    warning(paste0("plotting variable \'", quo_name(variable), "\' not provided."))
+  else {
+    grouping_var <- names(var_classes)[var_classes == "character"][1]
+    date_var <- names(var_classes)[var_classes == "Date"][1]
+    if(is.na(topn)) topn <- dim(dataset %>% group_by_if(is.character) %>% summarize(n=n()))[1]
+    plotdata <- dataset %>%
+      filter_if(is.character, all_vars(!is.na(.))) %>%
+      group_by_if(is.character) %>%
+      mutate(day = date - min(date))
+    if(lag_percentile > 0) {
+      lag_day <- dataset %>%
+        lag_days() %>%
+        select(!!ensym(grouping_var), !!variable) %>%
+        deframe()
+      plotdata <- plotdata %>%
+        mutate("day" = !!ensym(date_var) - min(!!ensym(date_var)),
+               "lag_date" = !!ensym(date_var) - lag_day[!!ensym(grouping_var)]) %>%
+        ungroup() %>%
+        mutate("lag_date" = lag_date - min(lag_date))
+      date_var <- "lag_date"
+    } else {
+      date_var <- "day"
+    }
+    plotdata %>%
+      group_by(!!ensym(grouping_var)) %>%
+    { lp <- ggplot(.) +
+        geom_line(aes(x = !!ensym(date_var), y = (!!variable), color = !!ensym(grouping_var))) +
+        geom_text(data = . %>%
+                    filter(!!ensym(date_var) == max(!!ensym(date_var))) %>%
+                    ungroup() %>%
+                    top_n(topn, (!! variable)),
+                  aes(label = !!ensym(grouping_var), color = !!ensym(grouping_var), x = !!ensym(date_var), y = (!! variable)),
+                  hjust = "right",
+                  vjust = "bottom") +
+        ylim(1, NA) +
+        theme_minimal() +
+        theme(legend.position = "none") +
+        ggtitle(paste0(quo_name(variable), " by ", grouping_var))
+      if(show_points) lp <- lp + geom_point(aes(x = !!ensym(date_var), y = (!!variable), color = !!ensym(grouping_var)))
+      if(log_scale) lp <- lp + scale_y_log10()
+      lp
+    }
+  }
 }
 
 ## country specific plot functions
 country_timeplot <- function(countries, variable, topn = 10) {
-  lag_day <- lag_days(by_country, countries) %>%
+  lag_day <- csse_by_country %>%
+    filter(country %in% countries) %>%
+    lag_days() %>%
     select(country, (!!variable)) %>%
     deframe()
-  by_country %>%
+  csse_by_country %>%
     filter(country %in% countries) %>%
     mutate("day" = date - min(date),
            "lag_date" = date - lag_day[country]) %>%
@@ -78,7 +129,7 @@ country_timeplot <- function(countries, variable, topn = 10) {
 }
 
 country_daily_timeplot <- function(countries, variable, topn = 10) {
-  by_country %>%
+  csse_by_country %>%
     filter(country %in% countries) %>%
     daily_from_cumulative() %>%
     ungroup() %>%
@@ -133,10 +184,10 @@ country_log_timeplot <- function(dataset, countries, variable, topn = 10) {
 }
 
 country_state_plot <- function(countries, variable) {
-  lag_day <- lag_days(by_country_state, countries) %>%
+  lag_day <- lag_days(csse_by_country_state, countries) %>%
     select(country, !!variable) %>%
     deframe()
-  by_country_state %>%
+  csse_by_country_state %>%
     filter(country %in% countries) %>%
     mutate("day" = date - min(date),
            "lag_date" = date - lag_day[country]) %>%
@@ -226,6 +277,8 @@ state_timeplot <- function(dataset, variable, topn=3) {
         ggtitle(paste0(quo_name(variable), " by state"))
     }
 }
+
+
 
 ## county specific plot functions
 county_map <- function(dataset, variable, show_state=TRUE) {
