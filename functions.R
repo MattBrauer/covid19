@@ -16,6 +16,113 @@ require(httr)
 require(tsibble)
 
 
+# timeplot <- function(dataset, variable, log_scale = FALSE, show_points = FALSE, lag_percentile = 10, topn = 3) {
+#   var_classes <- lapply(dataset, class)
+#   if(!quo_name(variable) %in% names(var_classes)[var_classes == "numeric"])
+#     warning(paste0("plotting variable \'", quo_name(variable), "\' not provided."))
+#   else {
+#     grouping_var <- names(var_classes)[var_classes == "character"][1]
+#     date_var <- names(var_classes)[var_classes == "Date"][1]
+#     if(is.na(topn)) topn <- dim(dataset %>% group_by_if(is.character) %>% summarize(n=n()))[1]
+#     plotdata <- dataset %>%
+#       filter_if(is.character, all_vars(!is.na(.))) %>%
+#       group_by_if(is.character) %>%
+#       mutate(day = date - min(date))
+#     if(lag_percentile > 0) {
+#       lag_day <- dataset %>%
+#         lag_days() %>%
+#         select(!!ensym(grouping_var), !!variable) %>%
+#         deframe()
+#       plotdata <- plotdata %>%
+#         mutate("day" = !!ensym(date_var) - min(!!ensym(date_var)),
+#                "lag_date" = !!ensym(date_var) - lag_day[!!ensym(grouping_var)]) %>%
+#         ungroup() %>%
+#         mutate("lag_date" = lag_date - min(lag_date))
+#       date_var <- "lag_date"
+#     } else {
+#       date_var <- "day"
+#     }
+    
+
+rolling_average <- function(dataset, window = 5) {
+  var_classes <- lapply(dataset, class)
+  grouping_var <- names(var_classes)[var_classes == "character"][1]
+  date_var <- names(var_classes)[var_classes == "Date"][1]
+  
+  dataset %>%
+    as_tsibble(key=!!ensym(grouping_var), index=!!ensym(date_var)) %>%
+    group_by(!!ensym(grouping_var)) %>%
+    mutate_if(is.numeric,
+              .funs = list(avg = ~slider::slide_dbl(.x = (.), .f = mean,
+                                                    .before = window, .after = window))) %>%
+    rename_at(vars( contains( "_avg") ),
+              list(~paste("avg", gsub("_avg", "", .), sep = "_"))) %>%
+    as_tibble()
+}
+
+annotate_dates <- function(dataset, annotations) {
+  var_classes <- lapply(dataset, class)
+  date_var <- names(var_classes)[var_classes == "Date"][1]
+  grouping_var <- names(var_classes)[var_classes == "character"][1]
+
+  dataset %>%
+    left_join(annotations %>%
+                rename_if(is.Date, ~str_replace(., ".*", date_var)))
+}
+
+
+## rolling average
+rolling_average_ <- function(dataset,
+                            variable = quo(new_cases),
+                            event_markers = NA,
+                            window = 5) {
+  var_classes <- lapply(dataset, class)
+  if(!quo_name(variable) %in% names(var_classes)[var_classes == "numeric"])
+    warning(paste0("plotting variable \'", quo_name(variable), "\' not provided."))
+  else {
+    grouping_var <- names(var_classes)[var_classes == "character"][1]
+    date_var <- names(var_classes)[var_classes == "Date"][1]
+    start_date <- min(c(as.Date("2020-02-01"), dataset[[date_var]]))
+    
+    if(!is.na(event_markers)) {
+      event_var_classes <- lapply(event_markers, class)
+      event_date_var <- names(event_var_classes)[event_var_classes == "Date"][1]
+      event_grouping_var <- names(event_var_classes)[event_var_classes == "character"][1]
+      # event_markers <- event_markers %>%
+      #   rename(quo_name(ensym(grouping_var)) = event_grouping_var, date_var = event_date_var)
+      dataset <- dataset %>%
+        left_join(event_markers, by=c(grouping_var, "date" = "event_date"))
+    }
+    dataset %>%
+      as_tsibble(key=!!grouping_var, index=!!date_var) %>%
+      group_by(!!grouping_var) %>%
+      mutate(avg = slider::slide_dbl(.x = !!variable,
+                                     .f = mean,
+                                     .before = window,
+                                     .after = window)) %>%
+      { 
+        p <- ggplot(., aes(x = date, y = !!variable)) +
+          geom_line(aes(x = date, y=avg)) +
+          geom_point(aes(x = date, y=!!variable), shape = 20, fill = "red", color = "red") +
+          ylim(0,NA) +
+          xlim(start_date, NA) +
+          facet_wrap(vars(state),
+                     scale = "free",
+                     ncol=2)
+        if(!is.na(event_markers))
+          p <- p +
+            geom_vline(data = . %>% filter(event=="sip_start"),
+                   aes(xintercept = date), color = "red", linetype = 2) +
+            geom_vline(data = . %>% filter(event=="max_exp"),
+                     aes(xintercept = date), color = "red", linetype = 1) +
+            geom_vline(data = . %>% filter(event=="sip_end"),
+                     aes(xintercept = date), color = "green", linetype = 2)
+        p
+      }
+  }
+}
+  
+  
 ## function takes a tsibble with cumulative counts and breaks down to daily counts
 daily_from_cumulative <- function(dataset) {
   dataset %>%
@@ -39,20 +146,27 @@ lag_days <- function(dataset, percentile = 10) {
     summarize_if(is.numeric, ~max(., na.rm=TRUE)/percentile)
   dataset %>%
     group_by(!!ensym(grouping_var)) %>%
-    summarize(cases = max(date[cases < (first_deciles %>% dplyr::pull(cases))], na.rm=TRUE),
-              deaths = max(date[deaths < (first_deciles %>% dplyr::pull(deaths))], na.rm=TRUE),
-              recovered = max(date[recovered < (first_deciles %>% dplyr::pull(recovered))], na.rm=TRUE))
+    # summarize(cases = max(date[cases < (first_deciles %>% dplyr::pull(cases))], na.rm=TRUE),
+    #           deaths = max(date[deaths < (first_deciles %>% dplyr::pull(deaths))], na.rm=TRUE),
+    #           recovered = max(date[recovered < (first_deciles %>% dplyr::pull(recovered))], na.rm=TRUE))
+    summarize_if(is.numeric, ~max(date[. < (first_deciles %>% dplyr::pull(.))], na.rm=TRUE))
 }
 
 ## 'timeplot' takes a dataset with:
 ##    one 'character' column describing [country|state|county|...]
 ##    a column of class 'Date'
 ##    one or more columns of class 'numeric' for the plotting variable
-timeplot <- function(dataset, variable, log_scale = FALSE, show_points = FALSE, lag_percentile = 10, topn = 3) {
+timeplot <- function(dataset, variable, log_scale = FALSE,
+                     show_lines = TRUE,
+                     show_points = FALSE,
+                     show_average = FALSE,
+                     lag_percentile = 10, topn = 3) {
   var_classes <- lapply(dataset, class)
-  if(!quo_name(variable) %in% names(var_classes)[var_classes == "numeric"])
-    warning(paste0("plotting variable \'", quo_name(variable), "\' not provided."))
-  else {
+  if(!quo_name(variable) %in% names(var_classes)[var_classes == "numeric"] |
+     (show_average  & !paste0("avg_", quo_name(variable)) %in% names(var_classes)[var_classes == "numeric"])) {
+    warning(paste0("plotting variable \'", quo_name(variable), "\' or its average not available"))
+  } else {
+    if(show_average) avg_var <- paste
     grouping_var <- names(var_classes)[var_classes == "character"][1]
     date_var <- names(var_classes)[var_classes == "Date"][1]
     if(is.na(topn)) topn <- dim(dataset %>% group_by_if(is.character) %>% summarize(n=n()))[1]
@@ -77,7 +191,6 @@ timeplot <- function(dataset, variable, log_scale = FALSE, show_points = FALSE, 
     plotdata %>%
       group_by(!!ensym(grouping_var)) %>%
     { lp <- ggplot(.) +
-        geom_line(aes(x = !!ensym(date_var), y = (!!variable), color = !!ensym(grouping_var))) +
         geom_text(data = . %>%
                     filter(!!ensym(date_var) == max(!!ensym(date_var))) %>%
                     ungroup() %>%
@@ -89,8 +202,10 @@ timeplot <- function(dataset, variable, log_scale = FALSE, show_points = FALSE, 
         theme_minimal() +
         theme(legend.position = "none") +
         ggtitle(paste0(quo_name(variable), " by ", grouping_var))
-      if(show_points) lp <- lp + geom_point(aes(x = !!ensym(date_var), y = (!!variable), color = !!ensym(grouping_var)))
-      if(log_scale) lp <- lp + scale_y_log10()
+    if(show_lines) lp <- lp + geom_line(aes(x = !!ensym(date_var), y = !!variable, color = !!ensym(grouping_var)))
+    if(show_points) lp <- lp + geom_point(aes(x = !!ensym(date_var), y = !!variable, color = !!ensym(grouping_var)))
+    if(show_average) lp <- lp + geom_line(aes(x = !!ensym(date_var), y = !!quo(paste0("avg_", quo_name(variable))), color = !!ensym(grouping_var)))
+    if(log_scale) lp <- lp + scale_y_log10()
       lp
     }
   }
@@ -278,8 +393,6 @@ state_timeplot <- function(dataset, variable, topn=3) {
     }
 }
 
-
-
 ## county specific plot functions
 county_map <- function(dataset, variable, show_state=TRUE) {
   log_breaks <- 2 * 5**seq(0,8)
@@ -361,37 +474,4 @@ exp_fit <- function(dataset, political_unit, variable, window) {
     nest(date, estimate)
 }
 
-## rolling average
-rolling_average <- function(dataset = state_daily_stats,
-                            area_label = quo(state),
-                            variable = quo(new_cases),
-                            event_markers = event_dates,
-                            window = 5) {
-  start_date <- min(c(as.Date("2020-02-01"), dataset$date))
-  dataset %>%
-    left_join(event_markers,
-              by=c(quo_name(area_label), "date" = "event_date")) %>%
-    as_tsibble(key=!!area_label, index=date) %>%
-    group_by(!!area_label) %>%
-    mutate(avg = slider::slide_dbl(.x = !!variable,
-                                   .f = mean,
-                                   .before = window,
-                                   .after = window)) %>%
-    { 
-      ggplot(., aes(x = date, y = !!variable)) +
-        geom_vline(data = . %>% filter(event=="sip_start"),
-                   aes(xintercept = date), color = "red", linetype = 2) +
-        geom_vline(data = . %>% filter(event=="max_exp"),
-                   aes(xintercept = date), color = "red", linetype = 1) +
-        geom_vline(data = . %>% filter(event=="sip_end"),
-                   aes(xintercept = date), color = "green", linetype = 2) +
-        geom_line(aes(x = date, y=avg)) +
-        geom_point(aes(x = date, y=!!variable), shape = 20, fill = "red", color = "red") +
-        ylim(0,NA) +
-        xlim(start_date, NA) +
-        facet_wrap(vars(state),
-                   scale = "free",
-                   ncol=2)
-    }
-}
 

@@ -70,7 +70,8 @@ csse_by_country %>%
 csse_by_country %>%
   filter(cases >= 100) %>%
   group_by(country) %>%
-  mutate(day = date - min(date), maxday = max(day)) %>% timeplot(quo(cases), log_scale = TRUE, lag_percentile = 0, topn = 25)
+  mutate(day = date - min(date), maxday = max(day)) %>%
+  timeplot(quo(cases), log_scale = TRUE, lag_percentile = 0, topn = 25)
 ```
 
 
@@ -112,8 +113,24 @@ grid.arrange(p1, p2, nrow = 1)
 ```{r us-italy-china-spain-daily, fig.wide = TRUE, fig.cap = "Daily new cases and deaths for selected countries.", echo=FALSE, warning=FALSE, message=FALSE}
 
 countries <- c("China", "Italy", "Spain", "US")
-p1 <- country_daily_timeplot(countries, quo(cases))
-p2 <- country_daily_timeplot(countries, quo(deaths))
+# p1 <- country_daily_timeplot(countries, quo(cases))
+# p2 <- country_daily_timeplot(countries, quo(deaths))
+p1 <- csse_by_country %>%
+  filter(country %in% countries) %>%
+  group_by(country) %>%
+  daily_from_cumulative() %>%
+  timeplot(quo(new_cases), show_lines = FALSE, show_points = TRUE, show_average = FALSE, lag_percentile = 0)
+# l1 <- csse_by_country %>%
+#   filter(country %in% countries) %>%
+#   group_by(country) %>%
+#   daily_from_cumulative() %>%
+#   rolling_average() %>%
+#   timeplot(quo(avg_new_cases), show_lines = TRUE, show_points = FALSE, lag_percentile = 0)
+p2 <- csse_by_country %>%
+  filter(country %in% countries) %>%
+  group_by(country) %>%
+  daily_from_cumulative() %>%
+  timeplot(quo(new_deaths), show_lines = FALSE, show_points = TRUE, show_average = FALSE, lag_percentile = 0)
 grid.arrange(p1, p2, nrow = 1)
 
 ```
@@ -717,7 +734,7 @@ new_cases_plots <- lapply(states_by_sip_policy,
                             lapply(class, function(states) {
                               state_daily_stats %>%
                                 filter(state %in% states) %>%
-                                rolling_average(variable = quo(new_cases))
+                                rolling_average_(variable = quo(new_cases), event_markers = shutdown_dates)
                             })
 )
 new_cases_plots
@@ -750,17 +767,17 @@ new_cases_plots
 states <- c("Mississippi", "Florida", "Michigan", "Arizona")
 state_daily_stats %>%
   filter(state %in% states) %>%
-  rolling_average(variable = quo(new_deaths))
+  rolling_average_(variable = quo(new_deaths), event_markers = shutdown_dates)
 
 states <- c("Washington","California","New York", "Louisiana")
 state_daily_stats %>%
   filter(state %in% states) %>%
-  rolling_average(variable = quo(new_deaths))
+  rolling_average_(variable = quo(new_deaths), event_markers = shutdown_dates)
 
 states <- c("Alabama", "Georgia", "Kentucky", "Virginia")
 state_daily_stats %>%
   filter(state %in% states) %>%
-  rolling_average(variable = quo(new_deaths))
+  rolling_average_(variable = quo(new_deaths), event_markers = shutdown_dates)
 ```
 
 # Maximum daily new cases and deaths by US state
