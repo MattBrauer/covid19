@@ -19,6 +19,12 @@ source("functions.R")
 source("data.R")
 ```
 Latest version: `r commits(repository("."))[[1]]$message`
+Latest data as of `r max(complete$date)`.
+
+```{bash git-pull, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+## refresh data from JHU, NY Times and OWID github repos
+git submodule update --remote --recursive
+```
 
 # Background
 
@@ -35,12 +41,8 @@ Some cautions:
 * Reported numbers are absolute cumulative, not rates. They have not been scaled to population size.
 * Dates are dates reported, not necessarily date of observation.
 
-```{bash git-pull, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-## refresh data from JHU, NY Times and OWID github repos
-git submodule update --remote --recursive
-```
-
 # Progression of cases compared between countries
+
 
 ```{r plot-all-countries0, eval = FALSE, fig.wide = TRUE, fig.cap = "Progression of cases between countries. Day 0 for each country is the first day for which there is data. In some cases (e.g., China, Japan) the pandemic was well underway before data were recorded by JHU.", echo=FALSE, warning=FALSE, message=FALSE}
 
@@ -119,20 +121,15 @@ p1 <- csse_by_country %>%
   filter(country %in% countries) %>%
   group_by(country) %>%
   daily_from_cumulative() %>%
-  timeplot(quo(new_cases), show_lines = FALSE, show_points = TRUE, show_average = FALSE, lag_percentile = 0)
-# l1 <- csse_by_country %>%
-#   filter(country %in% countries) %>%
-#   group_by(country) %>%
-#   daily_from_cumulative() %>%
-#   rolling_average() %>%
-#   timeplot(quo(avg_new_cases), show_lines = TRUE, show_points = FALSE, lag_percentile = 0)
+  rolling_average() %>%
+  timeplot(quo(new_cases), show_lines = FALSE, show_points = TRUE, show_average = TRUE, lag_percentile = 0)
 p2 <- csse_by_country %>%
   filter(country %in% countries) %>%
   group_by(country) %>%
   daily_from_cumulative() %>%
-  timeplot(quo(new_deaths), show_lines = FALSE, show_points = TRUE, show_average = FALSE, lag_percentile = 0)
+  rolling_average() %>%
+  timeplot(quo(new_deaths), show_lines = FALSE, show_points = TRUE, show_average = TRUE, lag_percentile = 0)
 grid.arrange(p1, p2, nrow = 1)
-
 ```
 
 ```{r us-italy-plot, eval = FALSE, fig.wide = TRUE, fig.cap = "Comparing US to Italy. Day of pandemic is an adjustment to allow for different local pandemic start dates.", echo=FALSE, warning=FALSE, message=FALSE}
@@ -237,6 +234,28 @@ p2 <- csse_us_states_current %>%
   mutate_at(c("cases", "deaths", "recovered"), ~ (. * 1e6) / pop) %>%
   states_current_barplot(quo(deaths))
 
+grid.arrange(p1, p2, nrow = 1)
+
+```
+
+## New York as compared to the rest of the US
+
+```{r ny-us, fig.wide = TRUE, fig.cap = "Comparing New York to the rest of the US.", echo=FALSE, warning=FALSE, message=FALSE}
+countries <- c("US")
+
+dataset <- csse_by_state %>%
+  mutate(country = if_else(state == "New York", "New York", "US ex-NY")) %>%
+  group_by(country, date) %>%
+  summarize_if(is.numeric, sum, na.rm = TRUE) %>%
+  select(country, date, everything()) %>%
+  bind_rows(csse_by_country %>% filter(country %in% countries)) %>%
+  group_by(country) %>%
+  daily_from_cumulative() %>%
+  rolling_average()
+p1 <- dataset %>% 
+  timeplot(quo(new_cases), show_lines = FALSE, show_points = FALSE, show_average = TRUE, lag_percentile = 0)
+p2 <- dataset %>% 
+  timeplot(quo(new_deaths), show_lines = FALSE, show_points = FALSE, show_average = TRUE, lag_percentile = 0)
 grid.arrange(p1, p2, nrow = 1)
 
 ```

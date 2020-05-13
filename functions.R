@@ -160,34 +160,32 @@ timeplot <- function(dataset, variable, log_scale = FALSE,
                      show_lines = TRUE,
                      show_points = FALSE,
                      show_average = FALSE,
+                     align = "date",
                      lag_percentile = 10, topn = 3) {
   var_classes <- lapply(dataset, class)
   if(!quo_name(variable) %in% names(var_classes)[var_classes == "numeric"] |
      (show_average  & !paste0("avg_", quo_name(variable)) %in% names(var_classes)[var_classes == "numeric"])) {
     warning(paste0("plotting variable \'", quo_name(variable), "\' or its average not available"))
   } else {
-    if(show_average) avg_var <- paste
+    if(show_average) {
+      avg_var <- paste0("avg_", quo_name(variable))
+      if(!quo_name(avg_var) %in% names(var_classes)[var_classes == "numeric"]) {
+        warning(paste0("plotting variable \'", quo_name(avg_var), "\' not available"))
+      }
+    }
     grouping_var <- names(var_classes)[var_classes == "character"][1]
     date_var <- names(var_classes)[var_classes == "Date"][1]
     if(is.na(topn)) topn <- dim(dataset %>% group_by_if(is.character) %>% summarize(n=n()))[1]
     plotdata <- dataset %>%
       filter_if(is.character, all_vars(!is.na(.))) %>%
+      filter_if(is.numeric, any_vars(!is.na(.))) %>%
       group_by_if(is.character) %>%
       mutate(day = date - min(date))
     if(lag_percentile > 0) {
-      lag_day <- dataset %>%
-        lag_days() %>%
-        select(!!ensym(grouping_var), !!variable) %>%
-        deframe()
-      plotdata <- plotdata %>%
-        mutate("day" = !!ensym(date_var) - min(!!ensym(date_var)),
-               "lag_date" = !!ensym(date_var) - lag_day[!!ensym(grouping_var)]) %>%
-        ungroup() %>%
-        mutate("lag_date" = lag_date - min(lag_date))
-      date_var <- "lag_date"
     } else {
       date_var <- "day"
     }
+    if(align == "date") date_var = "date"
     plotdata %>%
       group_by(!!ensym(grouping_var)) %>%
     { lp <- ggplot(.) +
@@ -204,7 +202,7 @@ timeplot <- function(dataset, variable, log_scale = FALSE,
         ggtitle(paste0(quo_name(variable), " by ", grouping_var))
     if(show_lines) lp <- lp + geom_line(aes(x = !!ensym(date_var), y = !!variable, color = !!ensym(grouping_var)))
     if(show_points) lp <- lp + geom_point(aes(x = !!ensym(date_var), y = !!variable, color = !!ensym(grouping_var)))
-    if(show_average) lp <- lp + geom_line(aes(x = !!ensym(date_var), y = !!quo(paste0("avg_", quo_name(variable))), color = !!ensym(grouping_var)))
+    if(show_average) lp <- lp + geom_line(aes(x = !!ensym(date_var), y = !!ensym(avg_var), color = !!ensym(grouping_var)))
     if(log_scale) lp <- lp + scale_y_log10()
       lp
     }
