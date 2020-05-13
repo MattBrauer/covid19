@@ -820,6 +820,22 @@ exp_phase_tabular %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
+
+# TSA screening volume
+
+Data from [TSA coronavirus page](https://www.tsa.gov/coronavirus/passenger-throughput)
+
+```{r travel-volume,  fig.cap = "TSA checkpoint screening numbers.", echo=FALSE, warning=FALSE, message=FALSE}
+flight_data %>%
+  ggplot(aes(x = travel_date, y = throughput, fill = year)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  xlab("Travel date") +
+  ylab("Screening volume") +
+  ggtitle("TSA screening volume, matched by day of week")
+  
+```
+
 ## New cases and deaths per million population
 
 # References and other resources
