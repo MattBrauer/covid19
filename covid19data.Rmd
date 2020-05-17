@@ -15,6 +15,14 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(fig.wide = TRUE)
 
+## suppress lapply artifacts:
+##  in chunks where this is needed, set `suppress = TRUE`
+def <- knitr::knit_hooks$get("output")
+knitr::knit_hooks$set(output = function(x, options) {
+  x <- def(x, options)
+  ifelse(!is.null(options$suppress), gsub(pattern = "```.*```", "", x), x)
+})
+
 source("functions.R")
 source("data.R")
 ```
@@ -742,20 +750,132 @@ states_by_sip_policy <- sip_classes %>%
   group_map(~ split_chunks(.x))
 names(states_by_sip_policy) <- c("off", "on", "on_off")
 
+states_by_sip_policy <- lapply(sip_classes %>% group_by(class) %>% group_split(),
+                               function(chunk) chunk %>% dplyr::pull(state))
+names(states_by_sip_policy) <- c("off", "on", "on_off")
+fig_height <- lapply(states_by_sip_policy, function(x) length(x)/2)
+
 ```
 
 ## Average daily new cases
 
-```{r average-daily-new-cases, fig.cap = "Daily new cases with 5-day rolling mean. Red dotted line indicates the start date for statewide shelter-in-place restrictions. Green indicates the lifting of SIP.", echo=FALSE, warning=FALSE, message=FALSE}
+```{r average-daily-new-cases-no-sip, fig.cap = "Daily new cases with 5-day rolling mean for states with no SIP.", fig.height = fig_height[[1]], echo=FALSE, warning=FALSE, message=FALSE, suppress=TRUE}
+
+states <- states_by_sip_policy[[1]]
+state_daily_stats %>%
+  left_join(shutdown_dates, by=c("state", "date" = "event_date")) %>%
+  filter(state %in% states) %>%
+  rolling_average() %>%
+  group_by(state) %>%
+  { ggplot(., aes(x=date, y=avg_new_cases)) + 
+      facet_wrap(state ~ ., scales = "free_y", ncol = 2) + 
+      geom_line(size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+#      theme_tufte(base_size = 15) + 
+      theme(axis.title=element_blank(), 
+            axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      geom_point(data = . %>% filter(event=="sip_start"),
+                 aes(x = date, y = avg_new_cases), color = "red") +
+      geom_point(data = . %>% filter(event=="sip_end"),
+                 aes(x = date, y = avg_new_cases), color = "green")
+    }
+
+
+```
+
+```{r average-daily-new-cases-sip, fig.cap = "Daily new cases with 5-day rolling mean for states with SIP.", fig.height = fig_height[[2]], echo=FALSE, warning=FALSE, message=FALSE, suppress=TRUE}
+
+states <- states_by_sip_policy[[2]]
+state_daily_stats %>%
+  left_join(shutdown_dates, by=c("state", "date" = "event_date")) %>%
+  filter(state %in% states) %>%
+  rolling_average() %>%
+  group_by(state) %>%
+  { ggplot(., aes(x=date, y=avg_new_cases)) + 
+      facet_wrap(state ~ ., scales = "free_y", ncol = 2) + 
+      geom_line(size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+#      theme_tufte(base_size = 15) + 
+      theme(axis.title=element_blank(), 
+            axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      geom_point(data = . %>% filter(event=="sip_start"),
+                 aes(x = date, y = avg_new_cases), color = "red") +
+      geom_point(data = . %>% filter(event=="sip_end"),
+                 aes(x = date, y = avg_new_cases), color = "green")
+    }
+
+
+```
+
+```{r average-daily-new-cases-sip-removed, fig.cap = "Daily new cases with 5-day rolling mean for states with SIP that has been lifted.", fig.height = fig_height[[3]], echo=FALSE, warning=FALSE, message=FALSE, suppress=TRUE}
+
+states <- states_by_sip_policy[[3]]
+state_daily_stats %>%
+  left_join(shutdown_dates, by=c("state", "date" = "event_date")) %>%
+  filter(state %in% states) %>%
+  rolling_average() %>%
+  group_by(state) %>%
+  { ggplot(., aes(x=date, y=avg_new_cases)) + 
+      facet_wrap(state ~ ., scales = "free_y", ncol = 2) + 
+      geom_line(size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+#      theme_tufte(base_size = 15) + 
+      theme(axis.title=element_blank(), 
+            axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      geom_point(data = . %>% filter(event=="sip_start"),
+                 aes(x = date, y = avg_new_cases), color = "red") +
+      geom_point(data = . %>% filter(event=="sip_end"),
+                 aes(x = date, y = avg_new_cases), color = "green")
+    }
+
+
+```
+
+
+```{r average-daily-new-cases, fig.cap = "Daily new cases with 5-day rolling mean. Red dotted line indicates the start date for statewide shelter-in-place restrictions. Green indicates the lifting of SIP.", echo=FALSE, warning=FALSE, message=FALSE, suppress=TRUE, eval = FALSE}
+
+# new_cases_plots <- lapply(states_by_sip_policy,
+#                           function(class)
+#                             lapply(class, function(states) {
+#                               state_daily_stats %>%
+#                                 filter(state %in% states) %>%
+#                                 rolling_average_(variable = quo(new_cases), event_markers = shutdown_dates)
+#                             })
+# )
 
 new_cases_plots <- lapply(states_by_sip_policy,
-                          function(class)
-                            lapply(class, function(states) {
+                          function(states)
                               state_daily_stats %>%
+                                left_join(shutdown_dates, by=c("state", "date" = "event_date")) %>%
                                 filter(state %in% states) %>%
-                                rolling_average_(variable = quo(new_cases), event_markers = shutdown_dates)
-                            })
+                                rolling_average() %>%
+                                group_by(state) %>%
+                                { ggplot(., aes(x=date, y=avg_new_cases)) + 
+                                    facet_grid(state ~ ., scales = "free_y", space = "fixed") + 
+                                    geom_line(size=0.3) +
+                                    scale_color_manual(values = c(NA, "red"), guide=F) +
+                                    xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+#                                    theme_tufte(base_size = 15) + 
+                                    theme(axis.title=element_blank(), 
+                                          axis.text.y = element_blank(), axis.ticks = element_blank()) +
+                                    theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+                                    # geom_vline(data = . %>% filter(event=="sip_start"),
+                                    #            aes(xintercept = date), color = "red", linetype = 2) +
+                                    # geom_vline(data = . %>% filter(event=="sip_end"),
+                                    #            aes(xintercept = date), color = "green", linetype = 2)
+                                    geom_point(data = . %>% filter(event=="sip_start"),
+                                               aes(x = date, y = avg_new_cases), color = "red") +
+                                    geom_point(data = . %>% filter(event=="sip_end"),
+                                               aes(x = date, y = avg_new_cases), color = "green")                                                                }
 )
+
+
 new_cases_plots
 
 # states <- c("Mississippi", "Florida", "Michigan", "Arizona")
@@ -793,7 +913,7 @@ state_daily_stats %>%
   filter(state %in% states) %>%
   rolling_average_(variable = quo(new_deaths), event_markers = shutdown_dates)
 
-states <- c("Alabama", "Georgia", "Kentucky", "Virginia")
+states <- c("Alabama", "Georgia", "Texas", "Virginia")
 state_daily_stats %>%
   filter(state %in% states) %>%
   rolling_average_(variable = quo(new_deaths), event_markers = shutdown_dates)
@@ -821,7 +941,7 @@ exp_phase_tabular %>%
 ```
 
 
-# TSA screening volume
+# TSA screening volume, 2019 vs. 2020
 
 Data from [TSA coronavirus page](https://www.tsa.gov/coronavirus/passenger-throughput)
 
