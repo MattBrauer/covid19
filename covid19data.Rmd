@@ -531,7 +531,7 @@ exp_fits %>%
 
 ```{r state-curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
-states = c("California", "New York", "South Dakota")
+states = c("California", "New York", "South Dakota", "Texas")
 
 exp_fits <- csse_us_states %>%
   filter(cases > 9) %>%
