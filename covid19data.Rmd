@@ -965,7 +965,7 @@ flight_data %>%
 * [JHU dashboard](https://coronavirus.jhu.edu/map.html)
 * [The COVID Tracking Project](https://covidtracking.com/)
 * NY Times tracking data
-* CA hostpital data
+* CA hospital data
 
 ## Other sources
 

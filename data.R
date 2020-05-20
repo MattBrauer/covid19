@@ -2,6 +2,11 @@
 csse_data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
 nytimes_data_dir <- "covid-19-data"
 
+###############################
+## Google global mobility
+###############################
+mobility <- read_csv("Global_Mobility_Report.csv")
+
 
 ###############################
 ## CA hospital data
