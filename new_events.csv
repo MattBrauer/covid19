@@ -1,0 +1,103 @@
+state,event,event_date
+Alabama,sip_start,2020-04-04
+Alabama,sip_end,2020-04-30
+Alaska,sip_start,2020-03-28
+Alaska,sip_end,2020-04-24
+Arizona,sip_start,2020-03-31
+Arizona,sip_end,2020-05-15
+Arkansas,sip_end,2020-05-06
+Arkansas,sip_start,NA
+California,sip_start,2020-03-19
+California,sip_end,2020-05-12
+Colorado,sip_start,2020-03-26
+Colorado,sip_end,2020-05-01
+Connecticut,sip_start,2020-03-23
+Connecticut,sip_end,2020-05-20
+Delaware,sip_start,2020-03-24
+Delaware,sip_end,2020-05-31
+District of Columbia,sip_start,2020-04-01
+District of Columbia,sip_end,2020-06-08
+Florida,sip_start,2020-04-03
+Florida,sip_end,2020-05-04
+Georgia,sip_start,2020-04-03
+Georgia,sip_end,2020-04-30
+Hawaii,sip_start,2020-03-25
+Hawaii,sip_end,2020-05-31
+Idaho,sip_start,2020-03-25
+Idaho,sip_end,2020-04-30
+Illinois,sip_start,2020-03-21
+Illinois,sip_end,2020-05-29
+Indiana,sip_start,2020-03-24
+Indiana,sip_end,2020-05-04
+Iowa,sip_start,NA
+Iowa,sip_end,2020-05-01
+Kansas,sip_start,2020-03-30
+Kansas,sip_end,2020-05-03
+Kentucky,sip_start,2020-03-26
+Kentucky,sip_end,2020-05-20
+Louisiana,sip_start,2020-03-23
+Louisiana,sip_end,2020-05-15
+Maine,sip_start,2020-04-02
+Maine,sip_end,2020-05-31
+Maryland,sip_start,2020-03-30
+Maryland,sip_end,2020-05-15
+Massachusetts,sip_start,2020-03-24
+Massachusetts,sip_end,2020-05-18
+Michigan,sip_start,2020-03-24
+Michigan,sip_end,2020-05-28
+Minnesota,sip_start,2020-03-27
+Minnesota,sip_end,2020-05-18
+Mississippi,sip_start,2020-04-03
+Mississippi,sip_end,2020-04-27
+Missouri,sip_start,2020-04-06
+Missouri,sip_end,2020-05-03
+Montana,sip_start,2020-03-28
+Montana,sip_end,2020-04-26
+Nebraska,sip_start,NA
+Nebraska,sip_end,NA
+Nevada,sip_start,2020-04-01
+Nevada,sip_end,2020-05-15
+New Hampshire,sip_start,2020-03-27
+New Hampshire,sip_end,2020-05-31
+New Jersey,sip_start,2020-03-21
+New Jersey,sip_end,2020-06-05
+New Mexico,sip_start,2020-03-24
+New Mexico,sip_end,2020-05-31
+New York,sip_start,2020-03-22
+New York,sip_end,2020-05-28
+North Carolina,sip_start,2020-03-30
+North Carolina,sip_end,2020-05-22
+North Dakota,sip_start,NA
+North Dakota,sip_end,2020-05-01
+Ohio,sip_start,2020-03-23
+Ohio,sip_end,2020-05-29
+Oklahoma,sip_end,2020-04-24
+Oklahoma,sip_start,NA
+Oregon,sip_start,2020-03-23
+Oregon,sip_end,NA
+Pennsylvania,sip_start,2020-04-01
+Pennsylvania,sip_end,2020-06-04
+Rhode Island,sip_start,2020-03-28
+Rhode Island,sip_end,2020-05-08
+South Carolina,sip_start,2020-04-07
+South Carolina,sip_end,2020-05-04
+South Dakota,sip_start,NA
+South Dakota,sip_end,NA
+Tennessee,sip_start,2020-03-31
+Tennessee,sip_end,2020-04-30
+Texas,sip_start,2020-04-02
+Texas,sip_end,2020-04-30
+Utah,sip_start,NA
+Utah,sip_end,NA
+Vermont,sip_start,2020-03-25
+Vermont,sip_end,2020-05-15
+Washington,sip_start,2020-03-23
+Washington,sip_end,2020-05-31
+West Virginia,sip_start,2020-03-24
+West Virginia,sip_end,2020-05-04
+Wisconsin,sip_start,2020-03-25
+Wisconsin,sip_end,2020-05-13
+Wyoming,sip_end,2020-05-01
+Wyoming,sip_start,NA
+Virginia,sip_start,2020-03-30
+Virginia,sip_end,2020-06-10
