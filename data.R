@@ -5,7 +5,7 @@ nytimes_data_dir <- "covid-19-data"
 ###############################
 ## Google global mobility
 ###############################
-mobility <- read_csv("Global_Mobility_Report.csv")
+# mobility <- read_csv("Global_Mobility_Report.csv")
 
 
 ###############################
