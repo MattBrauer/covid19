@@ -147,13 +147,12 @@ names(state_abbreviations) <- state_names
 nyt_counties <- read_csv(paste0(nytimes_data_dir, "/us-counties.csv"))
 nyt_states <- read_csv(paste0(nytimes_data_dir, "/us-states.csv"))
 
-## From NY Times web page, scraped 2020-05-03
+## From NY Times web page, scraped 2020-05-25
 shutdown_dates <- read_csv("statewide_events.csv") %>%
   pivot_longer(-state, names_to = "event", values_to = "event_date") %>%
   mutate(event_date = as.Date(paste0("2020-", event_date)),
          state = state_names[state]) %>%
   arrange(state, event_date)
-
 
 ###############################
 ## JHU CSSE data:
