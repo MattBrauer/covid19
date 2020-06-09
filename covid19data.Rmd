@@ -38,7 +38,7 @@ git submodule update --remote --recursive
 
 ## New cases and plots by day for selected states
 
-```{r featured-plots}
+```{r featured-plots-1, echo=FALSE, warning=FALSE, message=FALSE}
 
 state_daily_stats <- csse_us_states %>%
   daily_from_cumulative()
@@ -53,8 +53,11 @@ state_daily_stats %>%
       geom_point(aes(x=date, y=new_cases), color = "red", size=0.3) +
       scale_color_manual(values = c(NA, "red"), guide=F) +
       xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
-      theme(axis.title=element_blank(),
-            axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+ #     theme(axis.title=element_blank(),
+ #           axis.text.y = element_blank(), axis.ticks = element_blank()) +
       theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
       ggtitle("Daily new cases, with 10 day rolling average")
   }
@@ -69,14 +72,67 @@ state_daily_stats %>%
       geom_point(aes(x=date, y=new_deaths), color = "red", size=0.3) +
       scale_color_manual(values = c(NA, "red"), guide=F) +
       xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
-      theme(axis.title=element_blank(),
-            axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+ #     theme(axis.title=element_blank(),
+ #           axis.text.y = element_blank(), axis.ticks = element_blank()) +
       theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
       ggtitle("Daily new deaths, with 10 day rolling average")
   }
 
 
 ```
+
+```{r featured-plots-2, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+ca_county_daily_stats <- complete %>%
+  filter(country=="US", !is.na(county), state=="California") %>%
+  group_by(state, county) %>%
+  select(-FIPS) %>%
+  daily_from_cumulative()
+
+ca_county_daily_stats %>%
+  filter(county %in% c("Los Angeles", "San Francisco", "Santa Clara", "Alameda")) %>%
+  group_by(county) %>%
+  rolling_average() %>%
+  { ggplot(., aes(x=date, y=avg_new_cases)) +
+      facet_wrap(county ~ ., scales = "free_y", ncol = 2) +
+      geom_line(size=0.3) +
+      geom_point(aes(x=date, y=new_cases), color = "red", size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(ca_county_daily_stats$date), max(ca_county_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+ #     theme(axis.title=element_blank(),
+ #           axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new cases, with 10 day rolling average")
+  }
+
+state_daily_stats %>%
+  filter(state %in% c("Arizona", "Arkansas", "Texas", "Utah")) %>%
+  group_by(state) %>%
+  rolling_average() %>%
+  { ggplot(., aes(x=date, y=avg_new_deaths)) +
+      facet_wrap(state ~ ., scales = "free_y", ncol = 2) +
+      geom_line(size=0.3) +
+      geom_point(aes(x=date, y=new_deaths), color = "red", size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+ #     theme(axis.title=element_blank(),
+ #           axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new deaths, with 10 day rolling average")
+  }
+
+
+```
+
 # Background
 
 This page contains plots of unprocessed data from Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE). Since early January the CSSE has built and hosted a near real-time tracker of corona virus cases, with a [public visual dashboard](https://coronavirus.jhu.edu/map.html).
@@ -457,7 +513,7 @@ csse_by_country_state %>% filter(country %in% countries) %>% timeplot(quo(deaths
 #country_state_plot(countries, quo(deaths))
 ```
 
-# Number of tests administered (from `covidtracking.com`)
+# Number of tests administered (from covidtracking.com)
 
 ```{r state-testing-rates, echo=FALSE, warning=FALSE, message=FALSE}
 states <- c("California", "New York", "Washington")
