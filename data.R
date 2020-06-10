@@ -70,7 +70,7 @@ us_metro_pop <- read_csv("demographic_data/cbsa-est2019-alldata.csv") %>%
 us_county_pop <- read_csv("demographic_data/co-est2019-alldata.csv") %>%
   dplyr::select(1:7, 19) %>%
   rename(pop = POPESTIMATE2019) %>%
-  mutate(county = gsub(" County", "", CTYNAME))
+  mutate(county = gsub(" County| Parish", "", CTYNAME))
 
 us_state_pop <- read_csv("demographic_data/nst-est2019-alldata.csv") %>%
   dplyr::select(1:5, 17) %>%
@@ -309,6 +309,9 @@ csse_us_states <- csse_by_state %>%
   left_join(us_county_pop %>% filter(COUNTY == "000"), by = c("state" = "STNAME")) %>%
   dplyr::select(state, pop, date, cases, recovered, deaths)
 
+state_daily_stats <- csse_us_states %>%
+  daily_from_cumulative()
+
 ## current numbers
 csse_us_states_current <- csse_us_states %>%
   group_by(state, date) %>%
@@ -323,7 +326,15 @@ csse_us_counties_current <- complete %>%
   left_join(us_county_pop %>% filter(COUNTY != "000"),
             by = c("state" = "STNAME", "county" = "county")) %>%
   filter(!is.na(pop)) %>%
-  dplyr::select(state, pop, date, cases, recovered, deaths)
+  dplyr::select(state, county, date, pop, cases, recovered, deaths)
+
+csse_us_counties <- complete %>%
+  filter(country=="US", !is.na(county)) %>%
+  group_by(state, county) %>%
+  left_join(us_county_pop %>% filter(COUNTY != "000"),
+            by = c("state" = "STNAME", "county" = "county")) %>%
+  filter(!is.na(pop)) %>%
+  dplyr::select(state, county, date, pop, cases, recovered, deaths)
 
 latest_date <- complete %>%
   filter(cases > 0 | recovered == 0 | deaths == 0) %>%
@@ -338,6 +349,34 @@ latest_date <- as.Date(latest_date)
 ## TODO: scrape website for updated data
 flight_data <- read_tsv("Date	Total Traveler Throughput	Total Traveler Throughput
 (1 Year Ago - Same Weekday)
+6/8/2020	430,414	2,644,981
+6/7/2020	441,255	2,669,860
+6/6/2020	353,016	2,225,952
+6/5/2020	419,675	2,649,808
+6/4/2020	391,882	2,623,947
+6/3/2020	304,436	2,370,152
+6/2/2020	267,742	2,247,421
+6/1/2020	353,261	2,499,002
+5/31/2020	352,947	2,555,578
+5/30/2020	268,867	2,117,180
+5/29/2020	327,133	2,570,613
+5/28/2020	321,776	2,485,770
+5/27/2020	261,170	2,269,035
+5/26/2020	264,843	2,453,649
+5/25/2020	340,769	2,512,237
+5/24/2020	267,451	2,070,716
+5/23/2020	253,190	2,124,825
+5/22/2020	348,673	2,792,670
+5/21/2020	318,449	2,673,635
+5/20/2020	230,367	2,472,123
+5/19/2020	190,477	2,312,727
+5/18/2020	244,176	2,615,691
+5/17/2020	253,807	2,620,276
+5/16/2020	193,340	2,091,116
+5/15/2020	250,467	2,664,549
+5/14/2020	234,928	2,611,324
+5/13/2020	176,667	2,343,675
+5/12/2020	163,205	2,191,387
 5/11/2020	215,645	2,512,315
 5/10/2020	200,815	2,419,114
 5/9/2020	169,580	1,985,942

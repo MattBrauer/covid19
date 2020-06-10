@@ -43,8 +43,10 @@ git submodule update --remote --recursive
 state_daily_stats <- csse_us_states %>%
   daily_from_cumulative()
 
+focal_state = "California"
+
 state_daily_stats %>%
-  filter(state %in% c("Arizona", "Arkansas", "Texas", "Utah")) %>%
+  filter(state == focal_state) %>%
   group_by(state) %>%
   rolling_average() %>%
   { ggplot(., aes(x=date, y=avg_new_cases)) +
@@ -392,13 +394,55 @@ grid.arrange(p1, p2, nrow = 1)
 
 ```{r ca-county-timeplot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
 
+focal_state <- "California"
+focal_state <- "Arkansas"
+
 p5 <- complete %>%
-  filter(country=="US", state=="California") %>%
+  filter(country=="US", state==focal_state) %>%
   county_timeplot(quo(cases))
 p6 <- complete %>%
-  filter(country=="US", state=="California") %>%
+  filter(country=="US", state==focal_state) %>%
   county_timeplot(quo(deaths))
 grid.arrange(p5, p6, nrow = 1)
+
+state_daily_stats %>%
+  filter(state == focal_state) %>%
+  group_by(state) %>%
+  rolling_average() %>%
+  { ggplot(., aes(x=date, y=avg_new_cases)) +
+      facet_wrap(state ~ ., scales = "free_y", ncol = 2) +
+      geom_line(size=0.3) +
+      geom_point(aes(x=date, y=new_cases), color = "red", size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+ #     theme(axis.title=element_blank(),
+ #           axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new cases, with 10 day rolling average")
+  }
+
+state_daily_stats %>%
+  filter(state == focal_state) %>%
+  group_by(state) %>%
+  rolling_average() %>%
+  { ggplot(., aes(x=date, y=avg_new_deaths)) +
+      facet_wrap(state ~ ., scales = "free_y", ncol = 2) +
+      geom_line(size=0.3) +
+      geom_point(aes(x=date, y=new_deaths), color = "red", size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+ #     theme(axis.title=element_blank(),
+ #           axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new deaths, with 10 day rolling average")
+  }
+
 
 ```
 
@@ -406,18 +450,18 @@ grid.arrange(p5, p6, nrow = 1)
 
 ```{r ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
 p1 <- csse_us_counties_current %>%
-  filter(state=="California") %>%
+  filter(state==focal_state) %>%
   county_map(quo(cases))
 p2 <- csse_us_counties_current %>%
-  filter(state=="California") %>%
+  filter(state==focal_state) %>%
   county_map(quo(deaths))
 grid.arrange(p1, p2, nrow = 1)
 
 p3 <- csse_us_counties_current %>%
-  filter(state=="California") %>%
+  filter(state==focal_state) %>%
   county_barplot(quo(cases))
 p4 <- csse_us_counties_current %>%
-  filter(state=="California") %>%
+  filter(state==focal_state) %>%
   county_barplot(quo(deaths))
 grid.arrange(p3, p4, nrow = 1)
 
@@ -430,22 +474,22 @@ grid.arrange(p3, p4, nrow = 1)
 ```{r per-capita-ca-county-plot, fig.wide = TRUE, fig.cap = "Cases and deaths per million within California.", echo=FALSE, warning=FALSE, message=FALSE}
 
 p1 <- csse_us_counties_current %>%
-  filter(state=="California") %>%
+  filter(state==focal_state) %>%
 #  mutate_at(c("cases", "deaths", "recovered"), ~ . / pop) %>%
   mutate(cases = 1e6 * cases / pop, se = 1e6 * sqrt(cases / pop)) %>%
   county_map(quo(cases))
 p2 <- csse_us_counties_current %>%
-  filter(state=="California") %>%
+  filter(state==focal_state) %>%
   mutate(deaths = 1e6 * deaths / pop, se = 1e6 * sqrt(deaths / pop)) %>%
   county_map(quo(deaths))
 grid.arrange(p1, p2, nrow = 1)
 
 p3 <- csse_us_counties_current %>%
-  filter(state=="California") %>%
+  filter(state==focal_state) %>%
   mutate(cases = 1e6 * cases / pop, se = 1e6 * sqrt(cases / pop)) %>%
   county_barplot(quo(cases))
 p4 <- csse_us_counties_current %>%
-  filter(state=="California") %>%
+  filter(state==focal_state) %>%
   mutate(deaths = 1e6 * deaths / pop, se = 1e6 * sqrt(deaths / pop)) %>%
   county_barplot(quo(deaths))
 grid.arrange(p3, p4, nrow = 1)
@@ -647,6 +691,50 @@ exp_fits %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
+
+```{r county-curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
+exp_fits <- csse_us_counties %>%
+  unite("state_county", c(state, county), remove=FALSE) %>%
+  filter(cases > 9) %>%
+  exp_fit(quo(state_county), quo(cases), window = 5) %>%
+  group_by(state, county) %>%
+  mutate(max_est = purrr::map_dbl(data, ~max(.$estimate)),
+         max_date = as.Date(purrr::map_dbl(data, ~ .$date[which.max(.$estimate)]),
+                            origin = "1970-01-01"),
+         last_est = purrr::map_dbl(data, ~ .$estimate[which.max(.$date)]),
+         last_date = as.Date(purrr::map_dbl(data, ~ max(.$date)),
+                            origin = "1970-01-01"))
+
+
+p1 <- exp_fits %>%
+  filter(state %in% states) %>%
+  unnest(data) %>%
+  { ggplot(., aes(x = date, y = estimate, color = state)) +
+      geom_line() +
+      geom_text(data = . %>%
+                  filter(date == max_date) %>%
+                  ungroup(),# %>%
+                  #top_n(topn, estimate),
+                aes(label = state, color = state, x = date, y = estimate),
+                hjust = "right",
+                vjust = "bottom") +
+      theme_minimal() +
+      theme(legend.position = "none") +
+      ggtitle("Exponential parameter over previous 5 days")
+  }
+
+p2 <- csse_us_states %>%
+  filter(state %in% states, cases > 9) %>%
+  mutate(cases = log(cases + 1)) %>%
+  ggplot(aes(x=date, y=cases, color=state)) +
+  geom_line(aes(y=cases, color=state)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+grid.arrange(p1, p2, nrow = 2)
+
+```
+
 ```{r state-curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
 
 states = c("California", "New York", "South Dakota", "Texas")
@@ -829,9 +917,6 @@ exp_phase_deaths_tabular %>%
 # Average daily statistics, by selected US state
 
 ```{r state-daily, echo=FALSE, warning=FALSE, message=FALSE}
-
-state_daily_stats <- csse_us_states %>%
-  daily_from_cumulative()
 
 state_peak_stats <- state_daily_stats %>%
   pivot_longer(c(-state, -date), names_to="obs", values_to="value") %>%
@@ -1065,11 +1150,13 @@ Data from [TSA coronavirus page](https://www.tsa.gov/coronavirus/passenger-throu
 
 ```{r travel-volume,  fig.cap = "TSA checkpoint screening numbers.", echo=FALSE, warning=FALSE, message=FALSE}
 flight_data %>%
-  ggplot(aes(x = travel_date, y = throughput, fill = year)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  ggplot(aes(x = travel_date, y = throughput, color = year)) +
+  geom_line() +
   theme_minimal() +
+  ylim(100000,NA) +
+  scale_y_log10() +
   xlab("Travel date") +
-  ylab("Screening volume") +
+  ylab("log10(Screening volume)") +
   ggtitle("TSA screening volume, matched by day of week")
   
 ```
