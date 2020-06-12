@@ -10,6 +10,10 @@ output:
     toc: yes
 ---
 
+```{bash git-pull, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+## refresh data from JHU, NY Times and OWID github repos
+git submodule update --remote --recursive
+```
 
 ```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -28,11 +32,6 @@ source("data.R")
 ```
 Latest version: `r commits(repository("."))[[1]]$message`
 Latest data as of `r max(complete$date)`.
-
-```{bash git-pull, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
-## refresh data from JHU, NY Times and OWID github repos
-git submodule update --remote --recursive
-```
 
 # Featured plots
 
@@ -63,7 +62,7 @@ state_daily_stats %>%
   }
 
 state_daily_stats %>%
-  filter(state %in% c("Florida", "Nevada", "South Carolina", "Tennessee")) %>%
+  filter(state %in% c("Florida", "Nevada", "South Carolina", "California")) %>%
   group_by(state) %>%
   rolling_average() %>%
   { ggplot(., aes(x=date, y=avg_new_cases)) +
