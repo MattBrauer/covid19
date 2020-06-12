@@ -392,7 +392,7 @@ state_timeplot <- function(dataset, variable, topn=3) {
 }
 
 ## county specific plot functions
-county_map <- function(dataset, variable, show_state=TRUE) {
+county_map <- function(dataset, variable, show_state=TRUE, log_scale=TRUE) {
   log_breaks <- 2 * 5**seq(0,8)
   map_data <- counties_map %>%
     filter(region %in% tolower(dataset$state)) %>%
@@ -409,17 +409,22 @@ county_map <- function(dataset, variable, show_state=TRUE) {
     lhs <- case_data
     rhs <- map_data
   }
-  left_join(lhs, rhs) %>%
-    dplyr::select(-region, -subregion) %>%
+  map_data <- left_join(lhs, rhs) %>%
+    dplyr::select(-region, -subregion)
+  map_plot <- map_data %>%
     ggplot(aes(long, lat, group = group)) +
     geom_polygon(aes(fill = (!! variable)), color = NA) +
-    scale_fill_viridis_c(option = "C",
-                         name = quo_name(variable),
-                         trans = "log",
-                         breaks = log_breaks, labels = log_breaks) +
     coord_fixed(1.3) +
     theme_void() +
     ggtitle(paste(quo_name(variable), "as of", latest_date))
+  if(log_scale == TRUE) map_plot +
+    scale_fill_viridis_c(option = "C",
+                         name = quo_name(variable),
+                         trans = "log",
+                         breaks = log_breaks, labels = log_breaks)
+  else map_plot + 
+    scale_fill_viridis_c(option = "C",
+                         name = quo_name(variable))
 }
 
 county_barplot <- function(dataset, variable) {

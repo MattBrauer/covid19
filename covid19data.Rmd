@@ -379,9 +379,9 @@ dataset <- csse_by_state %>%
   daily_from_cumulative() %>%
   rolling_average()
 p1 <- dataset %>% 
-  timeplot(quo(new_cases), show_lines = FALSE, show_points = FALSE, show_average = TRUE, lag_percentile = 0)
+  timeplot(quo(new_cases), show_lines = FALSE, show_points = TRUE, show_average = TRUE, lag_percentile = 0)
 p2 <- dataset %>% 
-  timeplot(quo(new_deaths), show_lines = FALSE, show_points = FALSE, show_average = TRUE, lag_percentile = 0)
+  timeplot(quo(new_deaths), show_lines = FALSE, show_points = TRUE, show_average = TRUE, lag_percentile = 0)
 grid.arrange(p1, p2, nrow = 1)
 
 ```
@@ -691,6 +691,9 @@ exp_fits %>%
 
 
 ```{r county-curve-fits, echo=FALSE, warning=FALSE, message=FALSE}
+
+focal_states <- c("Arizona", "Arkansas")
+
 county_exp_fits <- csse_us_counties %>%
   unite("state_county", c(state, county), remove=FALSE) %>%
   filter(cases > 100) %>%
@@ -714,7 +717,7 @@ p1
 p2
 
 p3 <- county_exp_fits %>%
-  filter(state %in% states) %>%
+  filter(state %in% focal_states) %>%
   unnest(data) %>%
   { ggplot(., aes(x = date, y = estimate, color = state)) +
       geom_line() +
@@ -731,14 +734,14 @@ p3 <- county_exp_fits %>%
   }
 
 p4 <- csse_us_states %>%
-  filter(state %in% states, cases > 9) %>%
+  filter(state %in% focal_states, cases > 9) %>%
   mutate(cases = log(cases + 1)) %>%
   ggplot(aes(x=date, y=cases, color=state)) +
   geom_line(aes(y=cases, color=state)) +
   theme_minimal() +
   theme(legend.position = "none")
 
-grid.arrange(p1, p2, nrow = 2)
+grid.arrange(p3, p4, nrow = 2)
 
 ```
 
