@@ -392,7 +392,7 @@ grid.arrange(p1, p2, nrow = 1)
 ```{r ca-county-timeplot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
 
 focal_state <- "California"
-focal_state <- "Arkansas"
+#focal_state <- "Arkansas"
 
 p5 <- complete %>%
   filter(country=="US", state==focal_state) %>%
