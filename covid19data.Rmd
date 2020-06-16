@@ -678,7 +678,7 @@ grid.arrange(p1, p2, nrow = 2)
 
 ```
 
-```{r exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
+```{r exp-fit-table, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
 exp_fits %>%
   select(-data) %>%
   arrange(desc(max_est)) %>%
