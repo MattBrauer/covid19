@@ -828,6 +828,14 @@ exp_fits %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
+```{r state-max-exp-fit-map, echo=FALSE, warning=FALSE, message=FALSE}
+exp_fits %>%
+  select(-data) %>%
+  ungroup() %>%
+  state_map(quo(max_est))
+```
+
+
 ## State exponential fits, 10 highest current rates of growth
 
 ```{r state-last-exp-fit-table, echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
@@ -841,6 +849,13 @@ exp_fits %>%
   kable() %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 
+```
+
+```{r state-last-exp-fit-map, echo=FALSE, warning=FALSE, message=FALSE}
+exp_fits %>%
+  select(-data) %>%
+  ungroup() %>%
+  state_map(quo(last_est))
 ```
 
 ```{r curve-fit-plot-functions, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
