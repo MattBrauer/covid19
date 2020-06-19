@@ -2,6 +2,10 @@
 csse_data_dir <- "COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
 nytimes_data_dir <- "covid-19-data"
 
+qq <- function(...) sapply(substitute({ ... })[-1], deparse)
+eu <- qq(Austria, Belgium, Bulgaria, Croatia, "Republic of Cyprus", "Czech Republic", Denmark, Estonia, Finland, France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg, Malta, Netherlands, Poland, Portugal, Romania, Slovakia, Slovenia, Spain, Sweden )
+eu <- gsub("\"", "", eu)
+
 ###############################
 ## Google global mobility
 ###############################
