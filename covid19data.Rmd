@@ -35,9 +35,34 @@ Latest data as of `r max(complete$date)`.
 
 # Featured plots
 
-## New cases and plots by day for selected states
+## Daily new cases, comparing US to other regions
 
 ```{r featured-plots-1, echo=FALSE, warning=FALSE, message=FALSE}
+
+csse_by_country %>%
+  mutate(region = if_else(country %in% eu, "EU", country)) %>%
+  group_by(region, date) %>%
+  summarize_if(is.numeric, sum, na.rm = TRUE) %>%
+  daily_from_cumulative() %>%
+  rolling_average(window = 3) %>%
+  filter(region %in% c("EU", "US", "Russia")) %>%
+  timeplot(quo(new_cases), show_lines = FALSE, show_points = TRUE, show_average = TRUE, topn = 4)
+
+csse_by_country %>%
+  mutate(region = if_else(country %in% eu, "EU", country)) %>%
+  group_by(region, date) %>%
+  summarize_if(is.numeric, sum, na.rm = TRUE) %>%
+  daily_from_cumulative() %>%
+  rolling_average(window = 3) %>%
+  filter(region %in% c("EU", "US", "Russia")) %>%
+  timeplot(quo(new_deaths), show_lines = FALSE, show_points = TRUE, show_average = TRUE, topn = 4)
+
+
+```
+
+## New cases and plots by day for selected states
+
+```{r featured-plots-2, echo=FALSE, warning=FALSE, message=FALSE}
 
 state_daily_stats <- csse_us_states %>%
   daily_from_cumulative()
@@ -102,7 +127,7 @@ state_daily_stats %>%
 
 ```
 
-```{r featured-plots-2, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+```{r featured-plots-3, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 
 ca_county_daily_stats <- complete %>%
   filter(country=="US", !is.na(county), state=="California") %>%
