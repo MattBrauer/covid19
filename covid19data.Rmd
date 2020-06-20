@@ -45,7 +45,7 @@ csse_by_country %>%
   summarize_if(is.numeric, sum, na.rm = TRUE) %>%
   daily_from_cumulative() %>%
   rolling_average(window = 3) %>%
-  filter(region %in% c("EU", "US", "Russia")) %>%
+  filter(region %in% c("EU", "US", "Brazil")) %>%
   timeplot(quo(new_cases), show_lines = FALSE, show_points = TRUE, show_average = TRUE, topn = 4)
 
 csse_by_country %>%
@@ -54,7 +54,7 @@ csse_by_country %>%
   summarize_if(is.numeric, sum, na.rm = TRUE) %>%
   daily_from_cumulative() %>%
   rolling_average(window = 3) %>%
-  filter(region %in% c("EU", "US", "Russia")) %>%
+  filter(region %in% c("EU", "US", "Brazil")) %>%
   timeplot(quo(new_deaths), show_lines = FALSE, show_points = TRUE, show_average = TRUE, topn = 4)
 
 
