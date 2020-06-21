@@ -1,0 +1,102 @@
+---
+title: "Covid-19 new case rates"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.wide = TRUE)
+
+## suppress lapply artifacts:
+##  in chunks where this is needed, set `suppress = TRUE`
+def <- knitr::knit_hooks$get("output")
+knitr::knit_hooks$set(output = function(x, options) {
+  x <- def(x, options)
+  ifelse(!is.null(options$suppress), gsub(pattern = "```.*```", "", x), x)
+})
+
+source("functions.R")
+source("data.R")
+```
+
+```{r animation}
+county_exp_fits <- csse_us_counties %>%
+  unite("state_county", c(state, county), remove=FALSE) %>%
+  filter(cases > 100) %>%
+  exp_fit(quo(state_county), quo(cases), window = 5) %>%
+  separate(state_county, into=c("state", "county"), sep="_") %>%
+  group_by(state, county) %>%
+  mutate(max_est = purrr::map_dbl(data, ~max(.$estimate)),
+         max_date = as.Date(purrr::map_dbl(data, ~ .$date[which.max(.$estimate)]),
+                            origin = "1970-01-01"),
+         last_est = purrr::map_dbl(data, ~ .$estimate[which.max(.$date)]),
+         last_date = as.Date(purrr::map_dbl(data, ~ max(.$date)),
+                            origin = "1970-01-01"))
+
+
+animated_county_map <- function(dataset, variable, frame, show_state=TRUE, log_scale=TRUE) {
+  log_breaks <- 2 * 5**seq(0,8)
+  map_data <- counties_map %>%
+    filter(region %in% tolower(dataset$state)) %>%
+    mutate(state = stringr::str_to_title(region),
+           county = stringr::str_to_title(subregion))
+  case_data <- dataset %>%
+    mutate(subregion = tolower(county)) %>%
+    filter(!is.na(subregion)) %>%
+    dplyr::select(subregion, !! variable)
+  if(show_state==TRUE) {
+    lhs <- map_data
+    rhs <- case_data
+  } else {
+    lhs <- case_data
+    rhs <- map_data
+  }
+  map_data <- left_join(lhs, rhs) %>%
+    dplyr::select(-region, -subregion)
+  map_plot <- map_data %>%
+    ggplot(aes(long, lat, group = group, frame = frame)) +
+    geom_polygon(aes(fill = (!! variable), frame = (!! frame)), color = NA) +
+    coord_fixed(1.3) +
+    theme_void() +
+    ggtitle(paste(quo_name(variable), "as of", latest_date))
+  if(log_scale == TRUE) map_plot +
+    scale_fill_viridis_c(option = "C",
+                         name = quo_name(variable),
+                         trans = "log",
+                         breaks = log_breaks, labels = log_breaks)
+  else map_plot + 
+    scale_fill_viridis_c(option = "C",
+                         name = quo_name(variable))
+}
+
+# TODO: cache this
+cp <- county_exp_fits %>%
+  dplyr::select(state, county, data) %>%
+  unnest(data) %>%
+  mutate(day = as.integer(date - min(date))) %>%
+  filter(day==1) %>%
+  county_map(quo(estimate), log_scale = TRUE) +
+  transition_time(day)
+
+animate(cp, fps = 20, width = 1024, height = 951, nframes = 640, end_pause = 40)
+
+```
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

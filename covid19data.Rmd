@@ -35,7 +35,7 @@ Latest data as of `r max(complete$date)`.
 
 # Featured plots
 
-## Daily new cases, comparing US to other regions
+## Daily new cases, comparing US to EU and Brazil
 
 ```{r featured-plots-1, echo=FALSE, warning=FALSE, message=FALSE}
 
