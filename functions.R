@@ -194,7 +194,7 @@ timeplot <- function(dataset, variable, log_scale = FALSE,
                     ungroup() %>%
                     top_n(topn, (!! variable)),
                   aes(label = !!ensym(grouping_var), color = !!ensym(grouping_var), x = !!ensym(date_var), y = (!! variable)),
-                  hjust = "right",
+                  hjust = "left",
                   vjust = "bottom") +
         ylim(1, NA) +
         theme_minimal() +
