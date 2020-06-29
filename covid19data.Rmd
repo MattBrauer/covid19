@@ -398,8 +398,9 @@ dataset <- csse_by_state %>%
   group_by(country, date) %>%
   summarize_if(is.numeric, sum, na.rm = TRUE) %>%
   select(country, date, everything()) %>%
-  bind_rows(csse_by_country %>% filter(country %in% countries)) %>%
-  group_by(country) %>%
+#  bind_rows(csse_by_country %>% filter(country %in% countries)) %>%
+  dplyr::rename(region = country) %>%
+  group_by(region) %>%
   daily_from_cumulative() %>%
   rolling_average()
 p1 <- dataset %>% 
@@ -407,6 +408,12 @@ p1 <- dataset %>%
 p2 <- dataset %>% 
   timeplot(quo(new_deaths), show_lines = FALSE, show_points = TRUE, show_average = TRUE, lag_percentile = 0)
 grid.arrange(p1, p2, nrow = 1)
+
+dataset %>% 
+  timeplot(quo(new_cases), hide_legend = FALSE, show_lines = TRUE, show_points = TRUE, show_average = TRUE, lag_percentile = 0)
+
+dataset %>% 
+  timeplot(quo(new_deaths), hide_legend = FALSE, show_lines = TRUE, show_points = TRUE, show_average = TRUE, lag_percentile = 0)
 
 ```
 
@@ -417,7 +424,7 @@ grid.arrange(p1, p2, nrow = 1)
 ```{r ca-county-timeplot, fig.wide = TRUE, fig.cap = "Cases and deaths within California.", echo=FALSE, warning=FALSE, message=FALSE}
 
 focal_state <- "California"
-#focal_state <- "Arkansas"
+#focal_state <- "Florida"
 
 p5 <- complete %>%
   filter(country=="US", state==focal_state) %>%

@@ -160,6 +160,7 @@ timeplot <- function(dataset, variable, log_scale = FALSE,
                      show_lines = TRUE,
                      show_points = FALSE,
                      show_average = FALSE,
+                     hide_legend = TRUE,
                      align = "date",
                      lag_percentile = 10, topn = 3) {
   var_classes <- lapply(dataset, class)
@@ -198,11 +199,11 @@ timeplot <- function(dataset, variable, log_scale = FALSE,
                   vjust = "bottom") +
         ylim(1, NA) +
         theme_minimal() +
-        theme(legend.position = "none") +
         ggtitle(paste0(quo_name(variable), " by ", grouping_var))
-    if(show_lines) lp <- lp + geom_line(aes(x = !!ensym(date_var), y = !!variable, color = !!ensym(grouping_var)))
-    if(show_points) lp <- lp + geom_point(aes(x = !!ensym(date_var), y = !!variable, color = !!ensym(grouping_var)))
+    if(show_lines) lp <- lp + geom_line(aes(x = !!ensym(date_var), y = !!variable, color = !!ensym(grouping_var)), size = 0.1)
+    if(show_points) lp <- lp + geom_point(aes(x = !!ensym(date_var), y = !!variable, color = !!ensym(grouping_var)), size = 0.1)
     if(show_average) lp <- lp + geom_line(aes(x = !!ensym(date_var), y = !!ensym(avg_var), color = !!ensym(grouping_var)))
+    if(hide_legend) lp <- lp + theme(legend.position = "none")
     if(log_scale) lp <- lp + scale_y_log10()
       lp
     }
