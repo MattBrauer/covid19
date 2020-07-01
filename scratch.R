@@ -78,7 +78,7 @@ script <- c("\"Florida was one of the last states to close down\nand one of the 
   "And while the rest of the country is still freaking out,\nespecially in blue states, look at this.",
   "I'm at a bar-restaurant. We're all having a good time.",
   "Not a single face mask. It's not that bad guys!\"")
-label <- "date of this moron's speech"
+label <- "Rogan O'Handley, Twitter moron"
 
 state_daily_stats %>%
   filter(state == "Florida") %>%
@@ -106,3 +106,41 @@ state_daily_stats %>%
       theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
       ggtitle("Daily new cases in Florida, with 7 day rolling average")
   }
+
+state_daily_stats %>%
+  filter(state %in% c("Arizona", "Florida", "Texas", "Utah")) %>%
+  group_by(state) %>%
+  rolling_average() %>%
+  { ggplot(.) +
+      facet_wrap(state ~ ., scales = "free_y", ncol = 2) +
+      geom_line(aes(x=date, y=avg_new_cases), size=0.1, color="blue") +
+      geom_point(aes(x=date, y=new_cases), color = "blue", size=0.1) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+      #     theme(axis.title=element_blank(),
+      #           axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new deaths, with 10 day rolling average")
+  }
+state_daily_stats %>%
+  filter(state %in% c("Arizona", "Florida", "Texas", "Utah")) %>%
+  group_by(state) %>%
+  rolling_average() %>%
+  { ggplot(.) +
+      facet_wrap(state ~ ., scales = "free_y", ncol = 2) +
+      geom_line(aes(x=date, y=avg_new_deaths), size=0.1, color="red") +
+      geom_point(aes(x=date, y=new_deaths), color = "red", size=0.1) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+      #     theme(axis.title=element_blank(),
+      #           axis.text.y = element_blank(), axis.ticks = element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new deaths, with 10 day rolling average")
+  }
+

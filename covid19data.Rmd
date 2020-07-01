@@ -68,7 +68,7 @@ state_daily_stats <- csse_us_states %>%
   daily_from_cumulative()
 
 state_daily_stats %>%
-  filter(state %in% c("Arizona", "Arkansas", "Texas", "Utah")) %>%
+  filter(state %in% c("Arizona", "Florida", "Texas", "Utah")) %>%
   group_by(state) %>%
   rolling_average() %>%
   { ggplot(., aes(x=date, y=avg_new_cases)) +
@@ -87,7 +87,7 @@ state_daily_stats %>%
   }
 
 state_daily_stats %>%
-  filter(state %in% c("Florida", "Nevada", "South Carolina", "California")) %>%
+  filter(state %in% c("Illinois", "Nevada", "Maryland", "California")) %>%
   group_by(state) %>%
   rolling_average() %>%
   { ggplot(., aes(x=date, y=avg_new_cases)) +
@@ -106,7 +106,7 @@ state_daily_stats %>%
   }
 
 state_daily_stats %>%
-  filter(state %in% c("Arizona", "Arkansas", "Texas", "Utah")) %>%
+  filter(state %in% c("Arizona", "Florida", "Texas", "Utah")) %>%
   group_by(state) %>%
   rolling_average() %>%
   { ggplot(., aes(x=date, y=avg_new_deaths)) +
@@ -155,7 +155,7 @@ ca_county_daily_stats %>%
   }
 
 state_daily_stats %>%
-  filter(state %in% c("Arizona", "Arkansas", "Texas", "Utah")) %>%
+  filter(state %in% c("Arizona", "Illinois", "Texas", "Utah")) %>%
   group_by(state) %>%
   rolling_average() %>%
   { ggplot(., aes(x=date, y=avg_new_deaths)) +
