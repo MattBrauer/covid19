@@ -107,6 +107,48 @@ state_daily_stats %>%
       ggtitle("Daily new cases in Florida, with 7 day rolling average")
   }
 
+csse_us_states %>%
+  daily_from_cumulative() %>%
+  left_join(us_state_pop %>% dplyr::select(NAME, pop),
+            by = c("state" = "NAME")) %>%
+  mutate_at(vars(-state, -date, -pop), list(percap = ~1e6 * ./pop)) %>%
+  filter(state %in% c("Florida", "California", "Arizona", "Texas")) %>%
+  rolling_average() %>%
+  { ggplot(., aes(x=date, y=avg_new_cases_percap)) +
+      facet_wrap(state ~ ., ncol = 2) +
+      geom_line(size=0.3) +
+      geom_point(aes(x=date, y=new_cases_percap), color = "red", size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new cases per million population")
+  }
+
+csse_us_states %>%
+  daily_from_cumulative() %>%
+  left_join(us_state_pop %>% dplyr::select(NAME, pop),
+            by = c("state" = "NAME")) %>%
+  mutate_at(vars(-state, -date, -pop), list(percap = ~1e6 * ./pop)) %>%
+  filter(state %in% c("Florida", "California", "Arizona", "Texas")) %>%
+  rolling_average() %>%
+  { ggplot(., aes(x=date, y=avg_new_deaths_percap)) +
+      facet_wrap(state ~ ., ncol = 2) +
+      geom_line(size=0.3) +
+      geom_point(aes(x=date, y=new_deaths_percap), color = "red", size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new deaths per million population")
+  }
+
+
+
 state_daily_stats %>%
   filter(state %in% c("Arizona", "Florida", "Texas", "Utah")) %>%
   group_by(state) %>%
@@ -143,4 +185,6 @@ state_daily_stats %>%
       theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
       ggtitle("Daily new deaths, with 10 day rolling average")
   }
+
+
 
