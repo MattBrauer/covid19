@@ -35,6 +35,31 @@ Latest data as of `r max(complete$date)`.
 
 # Featured plots
 
+## Per capita daily new cases
+
+```{r featured-plots-0, echo=FALSE, warning=FALSE, message=FALSE}
+
+csse_us_states %>%
+  daily_from_cumulative() %>%
+  left_join(us_state_pop %>% dplyr::select(NAME, pop),
+            by = c("state" = "NAME")) %>%
+  mutate_at(vars(-state, -date, -pop), list(percap = ~1e6 * ./pop)) %>%
+  filter(state %in% c("Florida", "California", "Arizona", "Texas")) %>%
+  rolling_average() %>%
+  { ggplot(., aes(x=date, y=avg_new_cases_percap)) +
+      facet_wrap(state ~ ., ncol = 2) +
+      geom_line(size=0.3) +
+      geom_point(aes(x=date, y=new_cases_percap), color = "red", size=0.3) +
+      scale_color_manual(values = c(NA, "red"), guide=F) +
+      xlim(min(state_daily_stats$date), max(state_daily_stats$date)) +
+      ylim(0, NA) +
+      theme_minimal() +  
+      theme(axis.title=element_blank()) +
+      theme(strip.text.y = element_text(angle = 0, vjust=0.2, hjust=0)) +
+      ggtitle("Daily new cases per million population")
+  }
+```
+
 ## Daily new cases, comparing US to EU and Brazil
 
 ```{r featured-plots-1, echo=FALSE, warning=FALSE, message=FALSE}
