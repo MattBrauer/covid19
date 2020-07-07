@@ -35,6 +35,42 @@ Latest data as of `r max(complete$date)`.
 
 # Featured plots
 
+## Remember the "Cubic model"?
+
+In early May the White House Council of Economic Advisors (CEA), led by the odious and always wrong Kevin Hasset put out a "model" of covid-19 deaths that resembled the output of a fudged excel curve-smoothing. This "cubic model" was cited as evidence that the pandemic would soon be over, and was contrasted with the projections from the ACTUAL model developed by IHME and run in May 4.
+
+Here is what the author of "Dow 36,000" projected for Covid-19 deaths:
+
+```{r cubic, echo=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+imgpath <- "IHME/cubic_model.jpeg"
+img <- readJPEG(imgpath)
+knitr::include_graphics(imgpath)
+```
+Note that the May 4 IHME model is the most extreme, and that it was portrayed by the White House as hopelessly pessimistic.
+
+How has that May 4 model fared?
+
+```{r ihme-vs-cubic, echo=FALSE, warning=FALSE, message=FALSE}
+csse_by_country %>%
+  filter(country == "US") %>%
+  dplyr::rename(actual = deaths) %>%
+  left_join(ihme_05_04) %>%
+  daily_from_cumulative() %>%
+  select(date, new_actual, new_ihme) %>%
+  dplyr::rename(actual = new_actual,
+                IHME = new_ihme) %>%
+  filter(!is.na(actual), !is.na(IHME)) %>%
+  ungroup() %>%
+  pivot_longer(-date, names_to="source", values_to="deaths") %>%
+  ggplot(aes(x=date, y=deaths, color=source)) +
+  geom_line()
+```
+
+Sadly, it's been spot on.
+
+Kevin Hasset has since left the CEA, looking for new rubes to confuzzle with his mad economist's Excel skillz.
+
 ## Per capita daily new cases
 
 ```{r featured-plots-0, echo=FALSE, warning=FALSE, message=FALSE}
