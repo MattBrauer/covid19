@@ -11,6 +11,14 @@ eu <- gsub("\"", "", eu)
 ###############################
 # mobility <- read_csv("Global_Mobility_Report.csv")
 
+###############################
+## IHME projected deaths as of 5/4/2020
+###############################
+ihme_05_04 <- read_csv("IHME/2020_05_04/Hospitalization_all_locs.csv") %>%
+  filter(location_name=="United States of America") %>%
+  select(date, totdea_mean) %>%
+  dplyr::rename(ihme = totdea_mean)
+
 
 ###############################
 ## CA hospital data
