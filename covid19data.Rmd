@@ -49,7 +49,7 @@ knitr::include_graphics(imgpath)
 ```
 Note that the May 4 IHME model is the most extreme, and that it was portrayed by the White House as hopelessly pessimistic.
 
-How has that May 4 model fared:
+How has that May 4 model fared?
 
 ```{r ihme-vs-cubic, echo=FALSE, warning=FALSE, message=FALSE}
 csse_by_country %>%
