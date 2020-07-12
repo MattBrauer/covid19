@@ -121,6 +121,50 @@ csse_by_country %>%
 
 ```
 
+
+```{r featured-grouped-states, echo=FALSE, warning=FALSE, message=FALSE}
+
+groups <- rep("rest", length(us_state_pop$NAME))
+groups[us_state_pop$NAME %in% c("California")] <- "CA"
+groups[us_state_pop$NAME %in% c("Arizona", "Florida", "Texas")] <- "AZ-FL-TX"
+groups[us_state_pop$NAME %in% c("New York", "New Jersey")] <- "NY-NJ"
+groups[us_state_pop$NAME %in% c("United States",
+                                "Northeast Region",
+                                "Midwest Region",
+                                "South Region",
+                                "West Region")] <- "aggregate"
+names(groups) <- us_state_pop$NAME
+
+pops <- tbl_df(list(pop=us_state_pop$pop,
+                  state=us_state_pop$NAME,
+                  wave=groups)) %>%
+  group_by(wave) %>%
+  summarize(pop = sum(pop))
+
+csse_us_states %>%
+  daily_from_cumulative() %>%
+  mutate(wave = groups[state]) %>%
+  group_by(wave, date) %>%
+  summarize_if(is_double, sum, na.rm=TRUE) %>%
+  group_by(wave) %>%
+  rolling_average(window = 3) %>%
+  timeplot(quo(new_cases), show_lines = FALSE, show_points = TRUE, show_average = TRUE, hide_legend = FALSE, topn = 0)
+
+csse_us_states %>%
+  daily_from_cumulative() %>%
+  mutate(wave = groups[state]) %>%
+  group_by(wave, date) %>%
+  summarize_if(is_double, sum, na.rm=TRUE) %>%
+  group_by(wave) %>%
+  rolling_average(window = 3) %>%
+  left_join(pops) %>%
+  mutate_at(vars(-wave, -date, -pop), funs(. / (pop/1e6))) %>%
+  timeplot(quo(new_cases), show_lines = FALSE, show_points = TRUE, show_average = TRUE, hide_legend = FALSE, topn = 0)
+
+  
+  
+```
+
 ## New cases and plots by day for selected states
 
 ```{r featured-plots-2, echo=FALSE, warning=FALSE, message=FALSE}
